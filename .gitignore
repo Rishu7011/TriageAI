@@ -1,1 +1,65 @@
-venv
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.pyc
+
+# Virtual Environment
+venv/
+env/
+.env/
+.venv/
+
+# Environment Variables
+.env
+.env.local
+.env.production
+
+# ML Model Files (large files)
+model/*.pkl
+model/*.joblib
+model/*.h5
+model/*.model
+
+# Data Files
+data/*.csv
+data/*.json
+data/*.parquet
+data/*.xlsx
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+logs/
+
+# Test & Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Build & Distribution
+dist/
+build/
+*.egg-info/

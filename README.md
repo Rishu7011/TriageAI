@@ -63,31 +63,6 @@ The difference is not incremental. It is **categorical.** The entire premise of 
 
 ---
 
-## 🏆 Why This Project Wins
-
-### Against Every Other Healthcare Team
-
-| What Most Teams Build | What TriageAI Builds |
-|---|---|
-| Medication reminder chatbot | Real-time deterioration detection engine |
-| Static FIFO queue sorter | ML model that predicts future patient state |
-| GPT wrapper for symptom checking | Explainable Gradient Boosting + clinical rules |
-| Dashboard with fixed data | Live-updating queue with visible patient movement |
-| "94% accuracy" slide | SHAP waterfall charts showing *why* each decision was made |
-
-### The Three Winning Properties
-
-**1. Solves a problem judges didn't know existed.**
-The "deterioration in the waiting room" problem is real, documented, and shocking. When explained clearly, judges lean forward. This is not another healthcare chatbot.
-
-**2. Has a visible before/after demo moment.**
-You can simulate 90 minutes of time, watch a patient's risk score climb, and see the alert fire — live, in front of judges. That is a story, not a dashboard.
-
-**3. Technically defensible under Q&A.**
-When judges ask "how is this different from existing hospital systems?" — the answer is crisp and clear: existing systems triage once. TriageAI triages continuously. That is the gap. That gap costs lives.
-
----
-
 ## ✨ Key Features
 
 ### 🔴 1. Dynamic Acuity Re-Scoring Engine *(The Core Differentiator)*

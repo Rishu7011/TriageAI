@@ -79,6 +79,8 @@ MODEL_PATH = MODEL_DIR / "triage_model.pkl"
 # 1. Feature Engineering
 # ─────────────────────────────────────────────────────────────
 
+# CRITICAL-3e FIX: Added "has_comorbidity" to match the new 16-feature base vector
+# (has_comorbidity was added at index 15 in generate_data.py FEATURE_NAMES)
 ENGINEERED_FEATURE_NAMES = FEATURE_NAMES + [
     # Interaction features — these are what give GBM an edge over rule-based
     "age_x_time",            # elderly patients × long wait = compounding risk
@@ -98,11 +100,15 @@ ENGINEERED_FEATURE_NAMES = FEATURE_NAMES + [
 
 def engineer_features(X_raw: list, feature_names: list = FEATURE_NAMES) -> np.ndarray:
     """
-    Augment the base 15-feature vector with 12 additional engineered features.
-    
-    Input:  X_raw — list of base feature vectors (n_samples × 15)
-    Output: np.ndarray of shape (n_samples × 27)
-    
+    Augment the base 16-feature vector with 12 additional engineered features.
+
+    CRITICAL-3e FIX: Base vector is now 16 features (added has_comorbidity at index 15).
+    has_comorbidity is already in the base vector — it does NOT need separate engineering
+    (it's a 0/1 float that passes through directly as part of X).
+
+    Input:  X_raw — list of base feature vectors (n_samples × 16)
+    Output: np.ndarray of shape (n_samples × 28)  [was 27 with 15 base features]
+
     Interaction and flag features are the bridge between clinical intuition
     and ML signal: the GBM can learn that the combination of elderly + bad
     vitals + long wait is worse than any individual factor alone.
@@ -155,20 +161,22 @@ def engineer_features(X_raw: list, feature_names: list = FEATURE_NAMES) -> np.nd
     )
 
     # ── Stack all engineered features ─────────────────────────
+    # CRITICAL-3e: X now has 16 base features (including has_comorbidity at index 15).
+    # Final output shape: (n_samples, 16 + 12) = (n_samples, 28)
     engineered = np.column_stack([
-        X,                     # original 15 features
-        age_x_time,            # 16
-        vitals_x_time,         # 17
-        age_x_vitals,          # 18
-        hr_bp_ratio,           # 19
-        spo2_rr_risk,          # 20
-        fever_flag,            # 21
-        hypotension_flag,      # 22
-        tachycardia_flag,      # 23
-        hypoxia_flag,          # 24
-        gcs_impaired_flag,     # 25
-        high_risk_category_flag, # 26
-        combined_shock_score,  # 27
+        X,                     # original 16 features (incl. has_comorbidity)
+        age_x_time,            # 17
+        vitals_x_time,         # 18
+        age_x_vitals,          # 19
+        hr_bp_ratio,           # 20
+        spo2_rr_risk,          # 21
+        fever_flag,            # 22
+        hypotension_flag,      # 23
+        tachycardia_flag,      # 24
+        hypoxia_flag,          # 25
+        gcs_impaired_flag,     # 26
+        high_risk_category_flag, # 27
+        combined_shock_score,  # 28
     ])
 
     return engineered
@@ -267,7 +275,7 @@ BEST_PARAMS_DEFAULT = {
 # ─────────────────────────────────────────────────────────────
 
 def train(
-    n_samples: int = 7000,
+    n_samples: int = 8000,   # QW-1 FIX: changed from 7000 to 8000 (README spec)
     run_grid_search: bool = False,   # set True for full optimization (slower)
     verbose: bool = True,
 ) -> dict:
@@ -664,7 +672,7 @@ def main():
 
     # Parse simple CLI args
     run_grid_search = "--grid-search" in sys.argv
-    n_samples = 7000
+    n_samples = 8000   # QW-1 FIX: default 8000 (was 7000)
 
     for arg in sys.argv[1:]:
         if arg.startswith("--samples="):

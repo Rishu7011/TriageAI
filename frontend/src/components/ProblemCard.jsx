@@ -1,144 +1,91 @@
-import React, { useEffect, useState } from 'react'
+/**
+ * ProblemCard.jsx — Landing state when no patients are in the queue.
+ * Shows the project pitch + "Load Demo" button.
+ */
+import React from 'react'
 import { motion } from 'framer-motion'
-import { AlertTriangle, Clock, Activity } from 'lucide-react'
+import { Activity, Play, AlertTriangle, TrendingUp, Brain } from 'lucide-react'
 
-const STATS = [
-  { label: 'deaths/yr from triage delays', target: 500, suffix: '+', color: '#E63946' },
-  { label: 'avg ER wait time (US)', target: 4.2, suffix: 'hrs', decimals: 1, color: '#FF8C00' },
-  { label: 'hospitals with AI re-scoring', target: 0, suffix: '', color: '#FFD700' },
+const FEATURES = [
+  { icon: <Activity size={18} color="#E63946" />, title: 'Live Risk Scoring', body: 'Multiplicative composite formula: base_risk × time_decay × age_modifier × comorbidity × ML score' },
+  { icon: <Brain    size={18} color="#3B82F6" />, title: 'SHAP Explanations', body: 'GradientBoostingClassifier + SHAP TreeExplainer — every risk score explained, not just a number' },
+  { icon: <TrendingUp size={18} color="#FF8C00" />, title: 'Time-Lapse Simulation', body: 'Simulate 90 minutes of ED evolution and watch James Wilson escalate from ESI-3 → ESI-2' },
+  { icon: <AlertTriangle size={18} color="#FFD700" />, title: 'Intelligent Alerting', body: 'Threshold-based alerts fire when risk ≥ 7.5 — before the patient crashes, not after' },
 ]
-
-function Counter({ target, suffix, decimals = 0, color }) {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    let start = 0; const dur = 1600
-    const tick = setInterval(() => {
-      start += dur / 60
-      const progress = Math.min(start / dur, 1)
-      const eased = 1 - Math.pow(1 - progress, 3)
-      setVal(+(target * eased).toFixed(decimals))
-      if (progress >= 1) clearInterval(tick)
-    }, 16)
-    return () => clearInterval(tick)
-  }, [target, decimals])
-  return (
-    <span style={{ color, fontWeight: 800, fontSize: '2.8rem', lineHeight: 1 }}>
-      {decimals > 0 ? val.toFixed(decimals) : val}{suffix}
-    </span>
-  )
-}
 
 export default function ProblemCard({ onLoadDemo, loading }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      style={{
-        minHeight: 'calc(100vh - 64px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '2rem',
-      }}
+      transition={{ duration: 0.5 }}
+      style={{ maxWidth: 680, margin: '4rem auto', padding: '0 1rem' }}
     >
-      <div style={{
-        maxWidth: 720, width: '100%',
-        background: 'linear-gradient(135deg, #1a0a0c 0%, #161B22 60%)',
-        border: '1px solid rgba(230,57,70,0.4)',
-        borderRadius: 16,
-        padding: '2.5rem',
-        boxShadow: '0 0 60px rgba(230,57,70,0.15)',
-      }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-          <AlertTriangle size={28} color="#E63946" />
-          <div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#E6EDF3' }}>
-              The Problem We're Solving
-            </div>
-            <div style={{ color: '#8B949E', fontSize: '0.85rem', marginTop: 2 }}>
-              Emergency departments score patients once — then forget them
-            </div>
-          </div>
-        </div>
-
-        {/* Stats grid */}
+      {/* Hero */}
+      <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3,1fr)',
-          gap: '1.5rem', marginBottom: '2rem',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: 72, height: 72, borderRadius: 20,
+          background: 'linear-gradient(135deg,#E63946 0%,#c1121f 100%)',
+          marginBottom: '1.25rem',
         }}>
-          {STATS.map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 + i * 0.15, duration: 0.4 }}
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid #30363D', borderRadius: 12,
-                padding: '1.25rem', textAlign: 'center',
-              }}
-            >
-              <Counter target={s.target} suffix={s.suffix} decimals={s.decimals || 0} color={s.color} />
-              <div style={{ color: '#8B949E', fontSize: '0.72rem', marginTop: 6 }}>{s.label}</div>
-            </motion.div>
-          ))}
+          <Activity size={36} color="#fff" />
         </div>
-
-        {/* Narrative */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid #30363D',
-          borderRadius: 12, padding: '1.25rem', marginBottom: '2rem',
-          fontSize: '0.9rem', color: '#8B949E', lineHeight: 1.7,
+        <h1 style={{
+          color: '#E6EDF3', fontFamily: '"Inter",sans-serif',
+          fontSize: '2rem', fontWeight: 800, margin: '0 0 0.6rem',
+          letterSpacing: '-0.02em',
         }}>
-          <p style={{ margin: 0 }}>
-            A patient arrives, gets triaged, and waits. Over the next 90 minutes, their condition silently
-            deteriorates — but the triage tag never changes. TriageAI continuously re-scores every patient
-            using machine learning, firing escalation alerts <strong style={{ color: '#E6EDF3' }}>before</strong> the deterioration becomes a crisis.
-          </p>
-          <div style={{
-            marginTop: '1rem', display: 'flex', gap: '1.5rem',
-            fontSize: '0.8rem',
-          }}>
-            {[
-              ['📊', 'GBM Model', 'AUC 0.837'],
-              ['🧠', 'SHAP Explain', 'per patient'],
-              ['⚡', 'Re-scores', 'every 60s'],
-            ].map(([icon, label, sub], i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#E6EDF3' }}>
-                <span>{icon}</span>
-                <span style={{ fontWeight: 600 }}>{label}</span>
-                <span style={{ color: '#8B949E' }}>— {sub}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+          TriageAI
+        </h1>
+        <p style={{ color: '#8B949E', fontSize: '0.95rem', lineHeight: 1.6, maxWidth: 480, margin: '0 auto' }}>
+          AI-powered Emergency Department triage: continuously re-scoring every patient
+          using vitals, time-in-ED, age, comorbidities, and a trained GBM model.
+        </p>
+      </div>
 
-        {/* CTA */}
+      {/* Features */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '2rem' }}>
+        {FEATURES.map(({ icon, title, body }) => (
+          <motion.div
+            key={title}
+            whileHover={{ scale: 1.02 }}
+            style={{
+              background: '#161B22', border: '1px solid #30363D',
+              borderRadius: 12, padding: '1rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              {icon}
+              <span style={{ color: '#E6EDF3', fontWeight: 600, fontSize: '0.85rem' }}>{title}</span>
+            </div>
+            <p style={{ color: '#8B949E', fontSize: '0.75rem', margin: 0, lineHeight: 1.5 }}>{body}</p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <div style={{ textAlign: 'center' }}>
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onLoadDemo}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => onLoadDemo(0)}
           disabled={loading}
           style={{
-            width: '100%', padding: '1rem',
-            background: 'linear-gradient(135deg, #E63946, #c1121f)',
-            border: 'none', borderRadius: 10,
-            color: '#fff', fontSize: '1rem', fontWeight: 700,
+            display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+            background: loading ? '#30363D' : 'linear-gradient(135deg,#E63946 0%,#c1121f 100%)',
+            border: 'none', borderRadius: 12, padding: '0.85rem 2.25rem',
+            color: '#fff', fontWeight: 700, fontSize: '0.95rem',
             cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-            fontFamily: 'inherit',
+            boxShadow: '0 4px 20px rgba(230,57,70,0.35)',
+            transition: 'all 0.2s',
           }}
         >
-          {loading ? (
-            <><Activity size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading…</>
-          ) : (
-            <><Clock size={18} /> Load 10 Demo Patients → Watch James Wilson Escalate</>
-          )}
+          <Play size={18} />
+          {loading ? 'Loading Demo…' : 'Load 10-Patient Demo'}
         </motion.button>
-
-        <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.72rem', color: '#8B949E' }}>
-          ✓ Prototype — not for clinical use &nbsp;|&nbsp; ESI v5 (AHRQ, 2020) &nbsp;|&nbsp; MIMIC-IV distributions
+        <div style={{ color: '#8B949E', fontSize: '0.75rem', marginTop: '0.75rem' }}>
+          Includes James Wilson (ESI-3 → watch him escalate after 90min simulation)
         </div>
       </div>
     </motion.div>

@@ -1,59 +1,69 @@
+/**
+ * AlertBanner.jsx — Dismissible alert notification strip.
+ * Appears at the top of the queue listing when risk thresholds are exceeded.
+ */
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, XCircle } from 'lucide-react'
+import { AlertTriangle, X, Zap } from 'lucide-react'
 
-const LEVEL_STYLE = {
-  CRITICAL: { bg: 'rgba(230,57,70,0.15)',  border: '#E63946', icon: '🚨', color: '#E63946', label: 'CRITICAL' },
-  WARNING:  { bg: 'rgba(255,140,0,0.12)',   border: '#FF8C00', icon: '⚠️', color: '#FF8C00', label: 'WARNING'  },
-}
+export default function AlertBanner({ alerts = [], onAcknowledge }) {
+  if (!alerts.length) return null
 
-export default function AlertBanner({ patients = [] }) {
-  const alerts = patients.filter(p =>
-    p.alert_level === 'CRITICAL' || p.alert_level === 'WARNING'
-  )
+  const topAlert = alerts[0]
+  const count = alerts.length
+
+  const bg = topAlert.severity === 'CRITICAL'
+    ? 'rgba(230,57,70,0.18)'
+    : 'rgba(255,140,0,0.15)'
+  const border = topAlert.severity === 'CRITICAL' ? '#E63946' : '#FF8C00'
+  const color  = topAlert.severity === 'CRITICAL' ? '#ff6b6b' : '#FF8C00'
 
   return (
     <AnimatePresence>
-      {alerts.map((p) => {
-        const s = LEVEL_STYLE[p.alert_level] || LEVEL_STYLE.WARNING
-        return (
-          <motion.div
-            key={p.patient_id}
-            initial={{ opacity: 0, y: -48, scaleY: 0.6 }}
-            animate={{ opacity: 1, y: 0, scaleY: 1 }}
-            exit={{ opacity: 0, y: -24, scaleY: 0.6 }}
-            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+      <motion.div
+        key={topAlert.alert_id}
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        style={{
+          background: bg,
+          border: `1px solid ${border}`,
+          borderRadius: 10,
+          padding: '0.65rem 1rem',
+          marginBottom: '0.75rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+        }}
+      >
+        <Zap size={16} color={color} />
+        <div style={{ flex: 1 }}>
+          <span style={{ color, fontWeight: 700, fontSize: '0.82rem' }}>
+            {topAlert.severity}
+          </span>
+          <span style={{ color: '#E6EDF3', fontSize: '0.82rem', marginLeft: '0.5rem' }}>
+            {topAlert.patient_name} — {topAlert.alert_text?.slice(0, 90)}
+          </span>
+          {count > 1 && (
+            <span style={{ color: '#8B949E', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+              (+{count - 1} more)
+            </span>
+          )}
+        </div>
+        {onAcknowledge && (
+          <button
+            onClick={() => onAcknowledge(topAlert.alert_id)}
             style={{
-              background: s.bg, border: `1px solid ${s.border}`,
-              borderRadius: 8, padding: '0.6rem 1rem',
-              display: 'flex', alignItems: 'center', gap: '0.75rem',
-              fontSize: '0.82rem', marginBottom: '0.5rem',
+              background: 'none', border: `1px solid ${border}`,
+              borderRadius: 6, padding: '0.2rem 0.5rem',
+              color, cursor: 'pointer', fontSize: '0.72rem',
+              fontWeight: 600,
             }}
           >
-            <span style={{ fontSize: '1.1rem' }}>{s.icon}</span>
-            <strong style={{ color: s.color }}>{s.label}</strong>
-            <span style={{ color: '#E6EDF3', fontWeight: 600 }}>{p.name}</span>
-            <span style={{ color: '#8B949E' }}>
-              Risk {(p.risk_probability * 100).toFixed(0)}% ·
-              ESI {p.dynamic_acuity} ·
-              Wait {p.wait_time_min}min
-            </span>
-            {p.explanation?.[0] && (
-              <span style={{ color: s.color, marginLeft: 'auto', fontSize: '0.75rem' }}>
-                {p.explanation[0]}
-              </span>
-            )}
-            {p.acuity_changed && (
-              <span style={{
-                background: s.color, color: '#000', borderRadius: 4,
-                padding: '0.1rem 0.5rem', fontSize: '0.7rem', fontWeight: 700,
-              }}>
-                ESI ESCALATED
-              </span>
-            )}
-          </motion.div>
-        )
-      })}
+            ACK
+          </button>
+        )}
+      </motion.div>
     </AnimatePresence>
   )
 }

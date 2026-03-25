@@ -38,6 +38,7 @@ from engine.scorer import (
     analyze_vitals_trend,
     ALERT_THRESHOLD,
     WEIGHTS,
+    ESI_RISK_FLOOR,
 )
 from data.generate_data import (
     SYMPTOM_CATEGORIES,
@@ -131,10 +132,10 @@ class ModelManager:
 
     @classmethod
     def _engineer(cls, feature_vector: list) -> np.ndarray:
-        """Apply the same 15→27 feature engineering used during training."""
+        """Apply the same 16→28 feature engineering used during training."""
         try:
             from model.train_model import engineer_features
-            return engineer_features([feature_vector])[0]  # shape (27,)
+            return engineer_features([feature_vector])[0]  # shape (28,)
         except Exception:
             # Fallback: return raw vector (model will error gracefully)
             return np.array(feature_vector, dtype=float)
@@ -143,7 +144,6 @@ class ModelManager:
     def predict_risk_proba(cls, feature_vector: list) -> float:
         """
         Run ML inference. Returns probability (0.0–1.0) of deterioration.
-        Scaled back to 0–10 risk range by caller.
         Falls back to None if model unavailable.
         """
         if not cls._model_loaded or cls._model is None:
@@ -448,32 +448,42 @@ def rescore_patient(
     use_ml: bool = True,
 ) -> tuple[dict, dict | None]:
     """
-    Perform a full re-evaluation of a single patient:
-      1. Advance minutes_in_ed by elapsed_minutes
-      2. Deteriorate vitals probabilistically
-      3. Recompute composite risk score anchored to initial_risk
-      4. Check for ESI escalation
-      5. Fire alert if threshold crossed or ESI upgraded
-      6. Append to risk_history and vitals_history
+    Perform a full re-evaluation of a single patient using the MULTIPLICATIVE
+    composite formula from the README specification.
 
-    RISK COMPUTATION STRATEGY:
-    We use an anchor-based approach rather than recomputing from scratch each tick.
-    This preserves the clinically meaningful initial_risk set by generate_data
-    (which encodes category + age + intake vitals holistically) and layers the
-    time-based deterioration on top.
+    README formula:
+      composite_risk = base_risk
+                     × time_decay_multiplier
+                     × age_modifier
+                     × comorbidity_modifier
+                     × ml_multiplier
 
-      current_risk = initial_risk
-                   + time_elapsed_risk  (deterioration_rate × total_minutes)
-                   + vitals_delta_risk  (change in MEWS since admission)
-                   ± noise
+    COMPOSITE RISK FORMULA MATH VERIFICATION (James Wilson at T+90min):
+      base_risk        = 4.5  (Abdominal Pain category)
+      time_decay       = 1.0 + (0.020 × 95) = 1.0 + 1.90 = 2.90
+      age_mod          = 1.0 + (72-60) × 0.01 = 1.12
+      comorbidity_mod  = 1.15 (has HTN + T2DM)
+      ml_multiplier    = 1.0 (0.5 proba → 0.7 + 0.3 = 1.0, conservative)
 
-    This is the key mechanism that drives James Wilson from 4.5 → 7.8+ at 90min.
+      raw = 4.5 × 2.90 × 1.12 × 1.15 × 1.0
+          = 4.5 × 2.90   = 13.05
+          = 13.05 × 1.12 = 14.616
+          = 14.616 × 1.15 = 16.808
+          → capped at 10.0 ✅
+
+      WITH ML (0.74 proba): ml_multiplier = 0.7 + (0.74 × 0.6) = 1.144
+      raw = 4.5 × 2.90 × 1.12 × 1.15 × 1.144 = 19.23 → capped 10.0 ✅
+
+    Aisha Patel (ESI-4, minor injury, age 28, T+132min):
+      base_risk        = 1.5
+      time_decay       = 1.0 + (0.005 × 132) = 1.66
+      age_mod          = 1.0 (age 28 < 60)
+      comorbidity_mod  = 1.0
+      ml_multiplier    = 0.82 (proba ~0.2)
+      raw = 1.5 × 1.66 × 1.0 × 1.0 × 0.82 = 2.04 → STABLE ✅
 
     Returns:
       (updated_patient, alert_or_None)
-
-    The patient dict is mutated in-place for performance (Streamlit session_state
-    holds references, so mutation propagates automatically).
     """
     # ── Step 1: Advance time ──────────────────────────────────
     patient["minutes_in_ed"] = patient.get("minutes_in_ed", 0) + elapsed_minutes
@@ -482,46 +492,55 @@ def rescore_patient(
     updated_vitals = deteriorate_vitals(patient, elapsed_minutes)
     patient["vitals"] = updated_vitals
 
-    # ── Step 3: Anchor-based risk computation ─────────────────
-    # Use initial_risk as the baseline (set at patient creation in generate_data).
-    # Add time-elapsed risk and vitals deterioration on top.
+    # ── Step 3: Multiplicative composite risk formula (README spec) ──
     from engine.scorer import score_vitals
 
-    initial_risk  = patient.get("initial_risk", patient.get("base_risk", 5.0))
     total_minutes = patient["minutes_in_ed"]
     cat           = SYMPTOM_CATEGORIES.get(patient.get("symptom_category", ""), {})
     detn_rate     = cat.get("deterioration_rate", 0.03)
+    base_risk_val = cat.get("base_risk", patient.get("base_risk", 5.0))
 
-    # Time component: grows linearly with wait time
-    time_risk = detn_rate * total_minutes  # e.g., 0.07 × 90 = 6.3 for abdominal pain
+    # Step 3a: Time decay multiplier (grows from 1.0 at t=0 upward, category-specific)
+    time_decay = 1.0 + (detn_rate * total_minutes)
 
-    # Vitals delta: compare current MEWS vs. intake MEWS
-    intake_vitals_score  = patient.get("vitals_score", 0.0)   # saved at intake
-    current_vitals_score = score_vitals(updated_vitals)
-    vitals_delta = max(0.0, current_vitals_score - intake_vitals_score)  # only penalise worsening
+    # Step 3b: Age modifier (linear formula per README: 1.0 + max(0,(age-60))×0.01)
+    age_mod = age_risk_modifier(patient.get("age", 40))
 
-    # Age modifier already baked into initial_risk; don't re-apply
-    composite = initial_risk + (time_risk * 0.35) + (vitals_delta * 0.55)
-    composite = round(min(composite, 10.0), 2)
+    # Step 3c: Comorbidity modifier — CRITICAL-3d FIX
+    # 1.15× if patient has known chronic conditions (HTN, T2DM, etc.)
+    comorbidity_mod = 1.15 if patient.get("has_comorbidity", False) else 1.0
 
-    # Also run the rule-based scorer and take the MAX — ensures high-acuity patients
-    # don't get underscored by the anchor formula if their vitals become very bad
-    rule_result = compute_risk_score(patient)
-    composite   = round(max(composite, rule_result["composite_risk"]), 2)
-
-    # ── Step 4: ML model blend (if available) ─────────────────
+    # Step 3d: ML probability (0.0–1.0), scaled to multiplier range [0.7, 1.3]
+    # ml_multiplier = 0.7 (very safe) → 1.3 (very risky)
     ml_proba = None
+    ml_multiplier = 1.0  # default: neutral contribution
+
     if use_ml and ModelManager.is_available():
         features = patient_to_features(patient)
         ml_proba = ModelManager.predict_risk_proba(features)
-
         if ml_proba is not None:
-            # Blend: 60% anchor-based + 40% ML probability (scaled to 0-10)
-            ml_score = ml_proba * 10.0
-            composite = round(0.60 * composite + 0.40 * ml_score, 2)
-            composite = min(composite, 10.0)
+            # Scale: 0.0 proba→0.7 multiplier, 0.5 proba→1.0, 1.0 proba→1.3
+            ml_multiplier = 0.7 + (ml_proba * 0.6)
 
-    # Update rule_result composite so downstream (alerts, ESI) use the right value
+    # Step 3e: Multiplicative composite (per README formula)
+    raw_composite = (
+        base_risk_val    # category base danger
+        * time_decay     # time bomb component
+        * age_mod        # biological vulnerability
+        * comorbidity_mod  # chronic disease amplifier
+        * ml_multiplier  # ML-predicted trajectory
+    )
+
+    # Step 3f: Apply ESI rule-based floor (ESI-1 must always be ≥ 9.0, etc.)
+    esi_floor = ESI_RISK_FLOOR.get(patient.get("esi_level", 3), 0.0)
+    composite = max(raw_composite, esi_floor)
+    composite = round(min(composite, 10.0), 2)
+
+    # ── Step 4: Also compute rule-based scorer for component breakdown ──
+    # (used for SHAP fallback display and ESI escalation detection)
+    rule_result = compute_risk_score(patient)
+
+    # Update rule_result composite so downstream uses the multiplicative value
     rule_result = dict(rule_result)
     rule_result["composite_risk"]   = composite
     rule_result["alert_triggered"]  = composite >= ALERT_THRESHOLD
@@ -538,7 +557,6 @@ def rescore_patient(
     patient["last_rescored_at"]   = datetime.now().isoformat()
 
     # Vitals score update (for feature display)
-    from engine.scorer import score_vitals
     patient["vitals_score"] = score_vitals(updated_vitals)
 
     # ── Step 6: Append to histories ───────────────────────────
@@ -690,6 +708,7 @@ def _make_feature_labels(feature_names: list, feature_values: list) -> list:
     """
     Format feature names + values into display labels.
     e.g., "heart_rate" → "Heart Rate (112 bpm)"
+    Updated to include has_comorbidity label (16th feature, CRITICAL-3).
     """
     units = {
         "age":               ("Age", "y"),
@@ -707,12 +726,15 @@ def _make_feature_labels(feature_names: list, feature_values: list) -> list:
         "deterioration_rate":("Deterioration Rate", ""),
         "age_modifier":      ("Age Risk Modifier", "×"),
         "base_risk":         ("Category Base Risk", "/10"),
+        "has_comorbidity":   ("Has Comorbidity", ""),   # CRITICAL-3: new 16th feature
     }
 
     labels = []
     for name, val in zip(feature_names, feature_values):
         display_name, unit = units.get(name, (name.replace("_", " ").title(), ""))
-        if unit:
+        if name == "has_comorbidity":
+            labels.append(f"{display_name}: {'Yes' if val >= 0.5 else 'No'}")
+        elif unit:
             labels.append(f"{display_name}: {val:.1f}{unit}")
         else:
             labels.append(f"{display_name}: {val:.1f}")
@@ -787,6 +809,10 @@ def simulate_time_jump(
     Fast-forward simulation: advance all patients by `total_minutes` in
     discrete steps of `step_minutes`, collecting risk snapshots and alerts.
 
+    CRITICAL-4 FIX: Set random seeds for reproducibility.
+    np.random.seed(42) + random.seed(42) ensure James Wilson's vital drift
+    is IDENTICAL on every demo run — no surprises during hackathon presentation.
+
     This powers the "Simulate 90 minutes" button in the demo.
     Returns:
       (updated_patients, all_alerts_fired, risk_snapshots)
@@ -796,11 +822,15 @@ def simulate_time_jump(
 
     James Wilson's risk curve will visibly climb step-by-step — this is
     the WOW MOMENT of the demo. His snapshot trajectory will show:
-      t=0   → Risk ~3.6 (ESI-3, "stable")
-      t=30  → Risk ~4.8 (fever climbing)
-      t=60  → Risk ~6.2 (tachycardia, hypotension)
-      t=90  → Risk ~7.8 (ALERT FIRES, ESI escalation suggested)
+      t=0   → Risk ~5.5 (ESI-3, "stable")
+      t=30  → Risk ~7.0 (fever climbing, time_decay 1.6)
+      t=60  → Risk ~8.5 (composite hits threshold, alert fires)
+      t=90  → Risk 10.0 (capped, CRITICAL — ESI upgrade triggered)
     """
+    # CRITICAL-4 FIX: Fixed random seeds for reproducible demo
+    np.random.seed(42)
+    random.seed(42)
+
     all_alerts   = []
     risk_snapshots = []
     steps = int(total_minutes / step_minutes)
@@ -990,6 +1020,7 @@ if __name__ == "__main__":
     print(f"\n📋 James Wilson BEFORE simulation:")
     print(f"   Risk: {james.get('current_risk', 'N/A')} | ESI: {james['esi_level']} | "
           f"Minutes in ED: {james['minutes_in_ed']}")
+    print(f"   has_comorbidity: {james.get('has_comorbidity', False)}")
 
     # Run full 90-minute simulation
     print("\n⏱️  Running 90-minute simulation (18 × 5-min steps)...")
@@ -1010,6 +1041,8 @@ if __name__ == "__main__":
         v = james_after["vitals"]
         print(f"   Vitals: HR {v['heart_rate']} | BP {v['bp_systolic']}/{v['bp_diastolic']} | "
               f"SpO2 {v['spo2']}% | Temp {v['temperature']}°F")
+        assert james_after["current_risk"] >= 7.5, f"FAIL: James risk {james_after['current_risk']:.2f} < 7.5"
+        print(f"   ✅ James Wilson hits ≥7.5 at T+90")
 
     print(f"\n🚨 Alerts fired during simulation: {len(alerts)}")
     for alert in alerts:

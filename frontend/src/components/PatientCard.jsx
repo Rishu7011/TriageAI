@@ -1,227 +1,199 @@
+/**
+ * PatientCard.jsx — Individual patient row card in the queue.
+ * Shows: risk score, alert level, vitals, SHAP top factors, trending arrows.
+ */
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, Clock, Heart, Activity } from 'lucide-react'
+import { ChevronDown, ChevronUp, Heart, Thermometer, Wind, Activity } from 'lucide-react'
 import ShapChart from './ShapChart'
 
-const ACUITY_COLOR = { 1: '#E63946', 2: '#FF8C00', 3: '#FFD700', 4: '#4CAF50', 5: '#388BFD' }
-const LEVEL_COLOR  = { CRITICAL: '#E63946', WARNING: '#FF8C00', WATCH: '#FFD700', STABLE: '#4CAF50' }
+// ── Alert colour palette ─────────────────────────────────────
+const COLORS = {
+  CRITICAL: { bg: 'rgba(230,57,70,0.12)',  border: '#E63946', text: '#ff6b6b',  badge: '#E63946' },
+  WARNING:  { bg: 'rgba(255,140,0,0.10)',  border: '#FF8C00', text: '#FF8C00',  badge: '#FF8C00' },
+  WATCH:    { bg: 'rgba(255,215,0,0.08)',  border: '#FFD700', text: '#FFD700',  badge: '#FFD700' },
+  STABLE:   { bg: 'rgba(76,175,80,0.08)', border: '#4CAF50', text: '#4CAF50',  badge: '#4CAF50' },
+}
+
+const ESI_LABELS = { 1: 'IMMEDIATE', 2: 'EMERGENT', 3: 'URGENT', 4: 'LESS URGENT', 5: 'NON-URGENT' }
 
 function RiskBar({ value }) {
+  const pct = Math.min(Math.round((value / 10) * 100), 100)
+  const color = value >= 7.5 ? '#E63946' : value >= 5.5 ? '#FF8C00' : value >= 3.5 ? '#FFD700' : '#4CAF50'
   return (
-    <div style={{
-      height: 6, borderRadius: 3, overflow: 'hidden',
-      background: 'rgba(255,255,255,0.08)', width: '100%',
-    }}>
+    <div style={{ flex: 1, height: 6, background: '#30363D', borderRadius: 3, overflow: 'hidden' }}>
       <motion.div
         initial={{ width: 0 }}
-        animate={{ width: `${Math.round(value * 100)}%` }}
-        transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
-        style={{
-          height: '100%', borderRadius: 3,
-          background: value >= 0.7 ? '#E63946' : value >= 0.5 ? '#FF8C00' : value >= 0.3 ? '#FFD700' : '#4CAF50',
-        }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        style={{ height: '100%', background: color, borderRadius: 3 }}
       />
     </div>
   )
 }
 
-export default function PatientCard({ patient, index }) {
-  const [open, setOpen] = useState(false)
-  const acuityColor = ACUITY_COLOR[patient.dynamic_acuity] || '#8B949E'
-  const levelColor  = LEVEL_COLOR[patient.alert_level] || '#8B949E'
-  const isCritical  = patient.alert_level === 'CRITICAL'
-
+function VitalChip({ label, value, warn }) {
   return (
-    <>
-      <motion.div
-        layout
-        layoutId={patient.patient_id}
-        initial={{ opacity: 0, x: -30 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 30, scale: 0.95 }}
-        transition={{ delay: index * 0.06, duration: 0.35, layout: { duration: 0.4 } }}
-        onClick={() => setOpen(true)}
-        className={isCritical ? 'pulse-critical' : ''}
-        style={{
-          background: '#161B22',
-          border: `1px solid ${isCritical ? '#E63946' : '#30363D'}`,
-          borderLeft: `4px solid ${acuityColor}`,
-          borderRadius: 10,
-          padding: '0.85rem 1rem',
-          cursor: 'pointer',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-        whileHover={{ scale: 1.01, borderColor: levelColor }}
-      >
-        {/* Rank indicator */}
-        <div style={{
-          position: 'absolute', top: 8, right: 8,
-          background: 'rgba(255,255,255,0.05)', borderRadius: 4,
-          padding: '0.1rem 0.4rem', fontSize: '0.68rem', color: '#8B949E',
-        }}>
-          #{index + 1} <ChevronRight size={10} style={{ display: 'inline' }} />
-        </div>
-
-        {/* Top row: name + badges */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 6 }}>
-          <span style={{
-            background: acuityColor, color: '#000',
-            borderRadius: 6, padding: '0.1rem 0.5rem',
-            fontSize: '0.72rem', fontWeight: 700,
-          }}>
-            ESI {patient.dynamic_acuity}
-          </span>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#E6EDF3', flex: 1 }}>
-            {patient.name}
-          </span>
-          <span style={{
-            background: `${levelColor}22`, color: levelColor,
-            border: `1px solid ${levelColor}55`,
-            borderRadius: 6, padding: '0.1rem 0.5rem',
-            fontSize: '0.7rem', fontWeight: 600,
-          }}>
-            {patient.alert_level}
-          </span>
-          {patient.acuity_changed && (
-            <span style={{
-              background: '#E63946', color: '#fff',
-              borderRadius: 6, padding: '0.1rem 0.4rem',
-              fontSize: '0.65rem', fontWeight: 700,
-            }}>
-              ↑ ESCALATED
-            </span>
-          )}
-        </div>
-
-        {/* Middle row: complaint + vitals */}
-        <div style={{ fontSize: '0.78rem', color: '#8B949E', marginBottom: 8, display: 'flex', gap: '1rem' }}>
-          <span style={{ flex: 1 }}>
-            <em>"{patient.chief_complaint}"</em>
-          </span>
-          <span style={{ whiteSpace: 'nowrap' }}>{patient.age}y &nbsp;·&nbsp;</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap' }}>
-            <Clock size={11} /> {patient.wait_time_min}m
-          </span>
-        </div>
-
-        {/* Vitals chips */}
-        <div style={{
-          display: 'flex', gap: '0.6rem', fontSize: '0.72rem', marginBottom: 8,
-          flexWrap: 'wrap',
-        }}>
-          {[
-            ['❤️', 'HR', `${patient.hr} bpm`],
-            ['🫁', 'SpO₂', `${patient.spo2}%`],
-            ['🩸', 'BP', `${patient.sbp}/${patient.dbp}`],
-            ['🌡️', 'T', `${patient.temp}°F`],
-          ].map(([icon, label, val]) => (
-            <span key={label} style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid #30363D', borderRadius: 6,
-              padding: '0.1rem 0.4rem', color: '#94a3b8',
-            }}>
-              {icon} {label}: <b style={{ color: '#E6EDF3' }}>{val}</b>
-            </span>
-          ))}
-        </div>
-
-        {/* Risk bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <RiskBar value={patient.risk_probability} />
-          <span style={{ color: levelColor, fontWeight: 700, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-            {(patient.risk_probability * 100).toFixed(0)}%
-          </span>
-        </div>
-      </motion.div>
-
-      {/* Detail Sheet */}
-      <AnimatePresence>
-        {open && (
-          <DetailSheet patient={patient} onClose={() => setOpen(false)} acuityColor={acuityColor} levelColor={levelColor} />
-        )}
-      </AnimatePresence>
-    </>
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      background: warn ? 'rgba(230,57,70,0.12)' : 'rgba(48,54,61,0.5)',
+      border: `1px solid ${warn ? '#E63946' : '#30363D'}`,
+      borderRadius: 8, padding: '0.3rem 0.55rem', minWidth: 52,
+    }}>
+      <span style={{ color: warn ? '#ff6b6b' : '#E6EDF3', fontWeight: 700, fontSize: '0.82rem' }}>{value}</span>
+      <span style={{ color: '#8B949E', fontSize: '0.62rem', marginTop: 1 }}>{label}</span>
+    </div>
   )
 }
 
-function DetailSheet({ patient, onClose, acuityColor, levelColor }) {
-  return (
-    <>
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200,
-        }}
-      />
-      {/* Panel */}
-      <motion.div
-        initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-        transition={{ type: 'spring', stiffness: 320, damping: 36 }}
-        style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, width: 520,
-          background: '#0D1117', borderLeft: '1px solid #30363D',
-          zIndex: 300, overflowY: 'auto', padding: '1.5rem',
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            background: 'none', border: '1px solid #30363D', borderRadius: 6,
-            color: '#8B949E', cursor: 'pointer', padding: '0.3rem 0.6rem',
-            marginBottom: '1rem', fontFamily: 'inherit', fontSize: '0.8rem',
-          }}
-        >
-          ← Close
-        </button>
+export default function PatientCard({ patient, rank }) {
+  const [expanded, setExpanded] = useState(false)
+  const alert = patient.alert_level || 'STABLE'
+  const colors = COLORS[alert] || COLORS.STABLE
+  const risk = patient.risk_probability * 10  // convert 0-1 to 0-10 display
 
-        <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: 4 }}>
-            <span style={{ background: acuityColor, color: '#000', borderRadius: 6, padding: '0.2rem 0.6rem', fontSize: '0.8rem', fontWeight: 700 }}>
-              ESI {patient.dynamic_acuity}
+  const v = patient  // vitals are top-level in API response
+  const hrWarn  = v.hr > 120 || v.hr < 50
+  const bpWarn  = v.sbp < 90 || v.sbp > 180
+  const spo2Warn = v.spo2 < 94
+  const tempWarn = v.temp > 101.5
+  const rrWarn  = v.rr > 25 || v.rr < 10
+
+  const esiColor = v.acuity_changed ? '#FF8C00' : '#8B949E'
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.3 }}
+      style={{
+        background: colors.bg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: 12,
+        marginBottom: '0.65rem',
+        overflow: 'hidden',
+        cursor: 'pointer',
+      }}
+      onClick={() => setExpanded(e => !e)}
+    >
+      {/* ── Main Row ─────────────────────────────────────────── */}
+      <div style={{ padding: '0.8rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Rank */}
+        <div style={{
+          width: 28, height: 28, borderRadius: 14,
+          background: rank <= 2 ? colors.badge : '#30363D',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '0.72rem', color: rank <= 2 ? '#fff' : '#8B949E', fontWeight: 700,
+          flexShrink: 0,
+        }}>
+          {rank}
+        </div>
+
+        {/* Name + info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ color: '#E6EDF3', fontWeight: 600, fontSize: '0.93rem', whiteSpace: 'nowrap' }}>
+              {patient.name}
             </span>
-            <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#E6EDF3' }}>{patient.name}</h2>
-            <span style={{ color: levelColor, fontWeight: 700, marginLeft: 'auto', fontSize: '0.9rem' }}>
-              {patient.alert_level}
+            <span style={{ color: '#8B949E', fontSize: '0.75rem' }}>
+              {patient.age}y {patient.sex}
             </span>
+            <span style={{
+              fontSize: '0.68rem', padding: '0.1rem 0.45rem', borderRadius: 10,
+              border: `1px solid ${esiColor}`, color: esiColor, fontWeight: 700,
+            }}>
+              ESI-{v.esi_level}{v.acuity_changed && ' ↑'}
+            </span>
+            {patient.has_comorbidity && (
+              <span style={{
+                fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: 10,
+                background: 'rgba(255,140,0,0.12)', border: '1px solid #FF8C00',
+                color: '#FF8C00',
+              }}>
+                comorbid
+              </span>
+            )}
           </div>
-          <div style={{ color: '#8B949E', fontSize: '0.82rem' }}>
-            {patient.age}y · {patient.sex || 'Unknown'} · {patient.symptom_category} · Wait: {patient.wait_time_min}min
-          </div>
-          <div style={{ color: '#94a3b8', fontSize: '0.83rem', marginTop: 4, fontStyle: 'italic' }}>
-            "{patient.chief_complaint}"
+          <div style={{ color: '#8B949E', fontSize: '0.73rem', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {patient.chief_complaint}
           </div>
         </div>
 
         {/* Risk score */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.8rem', color: '#8B949E' }}>
-            <span>Risk Probability</span>
-            <span style={{ color: levelColor, fontWeight: 700, fontSize: '1.1rem' }}>
-              {(patient.risk_probability * 100).toFixed(1)}%
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.15rem' }}>
+            <span style={{ color: colors.text, fontWeight: 800, fontSize: '1.3rem', lineHeight: 1 }}>
+              {(patient.risk_probability * 10).toFixed(1)}
             </span>
+            <span style={{ color: '#8B949E', fontSize: '0.65rem' }}>/10</span>
           </div>
-          <div style={{ height: 10, background: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden' }}>
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${patient.risk_probability * 100}%` }}
-              transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
-              style={{ height: '100%', background: levelColor, borderRadius: 5 }}
-            />
-          </div>
+          <span style={{
+            fontSize: '0.65rem', padding: '0.1rem 0.45rem', borderRadius: 10,
+            background: colors.badge + '33', border: `1px solid ${colors.badge}`,
+            color: colors.badge, fontWeight: 700,
+          }}>
+            {alert}
+          </span>
         </div>
 
-        {/* SHAP Chart */}
-        <ShapChart
-          shapLabels={patient.shap_labels || []}
-          shapValues={patient.shap_values || []}
-          explanation={patient.explanation || []}
-          alertLevel={patient.alert_level}
-          patientName={patient.name}
-        />
-      </motion.div>
-    </>
+        {/* Chevron */}
+        <div style={{ color: '#8B949E', flexShrink: 0 }}>
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </div>
+
+      {/* Risk bar */}
+      <div style={{ padding: '0 1rem 0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <RiskBar value={patient.risk_probability * 10} />
+        <span style={{ color: '#8B949E', fontSize: '0.68rem', flexShrink: 0 }}>
+          {patient.wait_time_min}m wait
+        </span>
+      </div>
+
+      {/* ── Expanded Detail ───────────────────────────────────── */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              borderTop: '1px solid #30363D',
+              padding: '0.8rem 1rem',
+              display: 'flex', flexDirection: 'column', gap: '0.8rem',
+            }}>
+              {/* Vitals grid */}
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <VitalChip label="HR"    value={v.hr}        warn={hrWarn} />
+                <VitalChip label="BP"    value={`${v.sbp}/${v.dbp}`} warn={bpWarn} />
+                <VitalChip label="SpO₂"  value={`${v.spo2}%`}  warn={spo2Warn} />
+                <VitalChip label="RR"    value={v.rr}        warn={rrWarn} />
+                <VitalChip label="Temp"  value={`${v.temp}°`} warn={tempWarn} />
+                <VitalChip label="GCS"   value={v.gcs}       warn={v.gcs < 14} />
+              </div>
+
+              {/* SHAP / Explanation */}
+              {patient.shap_labels?.length > 0 ? (
+                <ShapChart labels={patient.shap_labels} values={patient.shap_values} />
+              ) : patient.explanation?.length > 0 ? (
+                <div>
+                  <div style={{ color: '#8B949E', fontSize: '0.72rem', marginBottom: 4 }}>Key risk factors:</div>
+                  {patient.explanation.slice(0, 4).map((txt, i) => (
+                    <div key={i} style={{ color: '#E6EDF3', fontSize: '0.77rem', marginBottom: 2 }}>
+                      • {txt}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

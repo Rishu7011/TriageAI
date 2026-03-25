@@ -264,9 +264,10 @@ def compute_risk_score(patient: dict) -> dict:
     composite = sum(weighted.values())
 
     # ── ESI floor: never let rule-based risk fall below ESI floor ──
+    # QW-5 FIX: Hard floor (was soft floor at 90%). ESI-1 must always be ≥ 9.0, ESI-2 ≥ 7.0.
     # This ensures an ESI-1 patient never shows Risk 2.0 due to recent arrival.
     esi_floor = ESI_RISK_FLOOR.get(esi_level, 0.0)
-    composite = max(composite, esi_floor * 0.90)  # soft floor — 90% of ESI minimum
+    composite = max(composite, esi_floor)  # hard floor — no * 0.90 multiplier
 
     composite = round(min(composite, 10.0), 2)
 

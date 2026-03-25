@@ -1,45 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
-import { rescore } from '../lib/api'
-
 /**
- * Polls /api/patients/rescore every `intervalMs` (default 30 s).
- * Polling pauses when isTimeLapsing is true.
+ * useAutoRescore.js — Polling hook that repeatedly rescores the queue.
+ * Fires every `intervalMs` milliseconds (default 60000 = 1 minute).
  */
-export function useAutoRescore({
-  simOffset = 0,
-  intervalMs = 30_000,
-  isTimeLapsing = false,
-  enabled = true,
-} = {}) {
-  const [patients, setPatients]       = useState([])
-  const [isLoading, setIsLoading]     = useState(false)
-  const [error, setError]             = useState(null)
-  const [lastUpdated, setLastUpdated] = useState(null)
-  const timerRef = useRef(null)
+import { useEffect, useRef } from 'react'
 
-  const fetchOnce = async () => {
-    if (isTimeLapsing) return
-    setIsLoading(true)
-    try {
-      const data = await rescore(simOffset)
-      setPatients(data)
-      setLastUpdated(new Date())
-      setError(null)
-    } catch (e) {
-      setError(e?.response?.data?.detail || e.message || 'Rescore failed')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+export function useAutoRescore(onRescore, intervalMs = 60000, enabled = true) {
+  const callbackRef = useRef(onRescore)
+  callbackRef.current = onRescore
 
   useEffect(() => {
-    if (!enabled || isTimeLapsing) {
-      clearInterval(timerRef.current)
-      return
-    }
-    timerRef.current = setInterval(fetchOnce, intervalMs)
-    return () => clearInterval(timerRef.current)
-  }, [simOffset, intervalMs, isTimeLapsing, enabled])
-
-  return { patients, isLoading, error, lastUpdated, refresh: fetchOnce }
+    if (!enabled) return
+    const id = setInterval(() => callbackRef.current?.(), intervalMs)
+    return () => clearInterval(id)
+  }, [intervalMs, enabled])
 }

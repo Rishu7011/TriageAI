@@ -19,65 +19,66 @@ import uuid
 # ─────────────────────────────────────────────────────────────
 # Symptom Categories & their base risk (1-10 scale) + ESI map
 # ─────────────────────────────────────────────────────────────
+# CRITICAL-5 FIX: deterioration_rates updated to match README "Symptom Category Risk Curves" table exactly
 SYMPTOM_CATEGORIES = {
     "Chest Pain / Cardiac": {
         "base_risk": 8.0,
         "esi_range": [1, 2],
-        "deterioration_rate": 0.12,   # risk increase per minute elapsed
+        "deterioration_rate": 0.035,   # README table: 0.035 (was 0.12)
         "complaints": ["crushing chest pain", "chest tightness", "palpitations", "chest pressure with arm pain"],
     },
     "Stroke / Neurological": {
         "base_risk": 7.5,
         "esi_range": [1, 2],
-        "deterioration_rate": 0.15,
+        "deterioration_rate": 0.032,   # README table: 0.032 (was 0.15)
         "complaints": ["sudden facial droop", "slurred speech", "arm weakness", "sudden severe headache"],
     },
     "Trauma / Injury": {
         "base_risk": 6.0,
         "esi_range": [2, 3],
-        "deterioration_rate": 0.08,
+        "deterioration_rate": 0.015,   # README table: 0.015 (was 0.08)
         "complaints": ["MVA with head injury", "fall from height", "laceration with heavy bleeding", "blunt abdominal trauma"],
     },
     "Respiratory": {
         "base_risk": 6.5,
         "esi_range": [2, 3],
-        "deterioration_rate": 0.10,
+        "deterioration_rate": 0.030,   # README table: 0.030 (was 0.10)
         "complaints": ["severe shortness of breath", "acute asthma attack", "difficulty breathing", "wheezing"],
     },
     "Abdominal Pain": {
         "base_risk": 4.5,
         "esi_range": [2, 3],
-        "deterioration_rate": 0.07,   # James Wilson's category — subtle but escalating
+        "deterioration_rate": 0.020,   # README table: 0.020 (was 0.07) — James Wilson's category
         "complaints": ["diffuse abdominal pain", "right lower quadrant pain", "nausea and vomiting", "severe cramping"],
     },
     "Sepsis / Infection": {
         "base_risk": 7.0,
         "esi_range": [2, 3],
-        "deterioration_rate": 0.13,
+        "deterioration_rate": 0.13,    # Not in README table — keep existing rate, renamed to "Sepsis / Infection"
         "complaints": ["high fever with chills", "suspected sepsis", "wound infection with fever", "UTI with altered mental status"],
     },
     "Psychiatric / Behavioral": {
         "base_risk": 3.0,
         "esi_range": [3, 4],
-        "deterioration_rate": 0.02,
+        "deterioration_rate": 0.010,   # README table: 0.010 (was 0.02)
         "complaints": ["suicidal ideation", "acute anxiety attack", "altered mental status", "agitation"],
     },
     "Minor Injury / Low Acuity": {
         "base_risk": 1.5,
         "esi_range": [4, 5],
-        "deterioration_rate": 0.005,
+        "deterioration_rate": 0.005,   # README table: 0.005 (unchanged)
         "complaints": ["sprained ankle", "minor laceration", "sore throat", "mild back pain"],
     },
     "Allergic Reaction": {
         "base_risk": 5.5,
         "esi_range": [2, 3],
-        "deterioration_rate": 0.09,
+        "deterioration_rate": 0.09,    # Not in README table — keep existing
         "complaints": ["anaphylaxis", "severe allergic reaction", "urticaria with throat tightness"],
     },
     "GI / GU": {
         "base_risk": 3.5,
         "esi_range": [3, 4],
-        "deterioration_rate": 0.04,
+        "deterioration_rate": 0.04,    # Not in README table — keep existing
         "complaints": ["vomiting blood", "rectal bleeding", "severe diarrhea with dehydration", "kidney stone pain"],
     },
 }
@@ -245,25 +246,19 @@ def compute_vitals_score(vitals: dict) -> float:
 
 def age_risk_modifier(age: int) -> float:
     """
-    Older and very young patients have higher baseline risk.
-    Returns a multiplier: 1.0 = no change, >1.0 = higher risk.
+    CRITICAL-6 FIX: Replace step-function lookup table with linear formula from README.
+    README spec: age_modifier = 1.0 + max(0, (age - 60)) × 0.01
+
+    Math verification for James Wilson (age 72):
+      age_mod = 1.0 + max(0, 72-60) × 0.01
+              = 1.0 + 12 × 0.01
+              = 1.0 + 0.12
+              = 1.12  (was 1.40 from the old lookup table)
+
+    Returns a multiplier: 1.0 = no change, >1.0 = higher risk for older patients.
+    Patients under 60 get modifier 1.0 (baseline adult).
     """
-    if age < 2:
-        return 1.40    # Infants — very high risk
-    elif age < 12:
-        return 1.20    # Pediatric
-    elif age < 18:
-        return 1.05    # Adolescent
-    elif age < 50:
-        return 1.00    # Adult baseline
-    elif age < 65:
-        return 1.10    # Middle-aged
-    elif age < 75:
-        return 1.25    # Elderly
-    elif age < 85:
-        return 1.40    # Very elderly (James Wilson range)
-    else:
-        return 1.55    # Extreme age
+    return round(1.0 + max(0, (age - 60)) * 0.01, 3)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -432,7 +427,7 @@ def generate_demo_patients() -> list:
     Returns 10 hand-crafted patients optimized for the live hackathon demo.
 
     Demo flow design:
-      0. James Wilson    — 72yo abdominal pain  [STAR: ESI-3 → ESI-2, escalates at ~T+50-70]
+      0. James Wilson    — 72yo abdominal pain  [STAR: ESI-3 → ESI-2, escalates at ~T+90]
       1. Maria Chen      — 55yo chest pain       [ESI-2, stable WARNING — priority contrast]
       2. Aisha Patel     — 28yo minor injury      [ESI-4/5, stays STABLE — no over-triage]
       3. Robert Torres   — 68yo respiratory       [ESI-3, hits WARNING ~T+100, secondary drama]
@@ -443,17 +438,13 @@ def generate_demo_patients() -> list:
       8. Arjun Singh     — 33yo minor injury      [ESI-4, STABLE]
       9. Neha Desai      — 75yo respiratory       [ESI-2, WARNING, frail + short of breath]
 
-    Guarantees (all derived from anchor-based risk = initial_risk + detn_rate×mins×0.35 + vitals_delta×0.55):
-      - James:  initial_risk ≈ 6.8, reaches 7.5 by T+50 (conservative), 8.5+ by T+90
-      - Maria:  initial ESI-2 risk floor 7.0 — high from intake, no escalation
-      - Aisha:  initial_risk ≈ 1.5, detn_rate=0.005 → risk 1.9 at T+120 — stays STABLE
-      - Robert: initial_risk ≈ 6.1, detn_rate=0.10 → hits WARNING ~T+100
-      - Sarah:  initial_risk ≈ 5.5, detn_rate=0.08 → stays below 7.5 through T+120
-      - David:  initial_risk ≈ 7.8 (age_mod 1.55 × base 5.0), stays WARNING
-      - Rohan:  initial_risk ~ 5.5, stable
-      - Priya:  initial ESI-2 risk floor 7.0, stable WARNING
-      - Arjun:  initial_risk ~ 2.0, stable
-      - Neha:   initial ESI-2 risk floor 7.0, age-modifier pushes to WARNING
+    CRITICAL-6 math verification at T+90 (new multiplicative formula):
+      base_risk        = 4.5  (Abdominal Pain)
+      time_decay       = 1.0 + (0.020 × 95) = 2.90
+      age_mod          = 1.0 + (72-60) × 0.01 = 1.12
+      comorbidity_mod  = 1.15 (has HTN + T2DM)
+      ml_multiplier    = 1.0 (conservative, 0.5 proba)
+      raw = 4.5 × 2.90 × 1.12 × 1.15 × 1.0 = 16.81 → capped 10.0 ✅
     """
 
     patients = []
@@ -463,12 +454,18 @@ def generate_demo_patients() -> list:
     # 72yo M with insidious septic abdomen. Looks "not that sick" at intake
     # (ESI-3, low-grade fever, mild tachycardia). Escalates dramatically.
     #
-    # Math check (rule-based anchor):
-    #   initial_risk = base_risk(4.5) × age_mod(1.40) = 6.30
-    #   + vitals_score(1.0) × 0.5 = 0.50  → initial_risk ≈ 6.80
-    #   time_risk at T+90+5 (=95min total): 0.07 × 95 × 0.35 = 2.33
-    #   vitals_delta after 90min drift (HR+16, temp+1.6°F): vitals_score ≈ 3.5, delta≈2.5 × 0.55 = 1.38
-    #   composite ≈ 6.80 + 2.33 + 1.38 = 10.51 → capped 10.0 → CRITICAL  ✅
+    # CRITICAL-6 math (new linear age_mod formula):
+    #   age_mod = 1.0 + (72-60) × 0.01 = 1.12  (was 1.40 from lookup table)
+    #   base_risk = 4.5
+    #   initial_risk = 4.5 × 1.12 = 5.04
+    #   + vitals_score(1.0) × 0.5 = 0.50  → initial_risk ≈ 5.54
+    #
+    # Multiplicative formula at T+90+5min (95min total):
+    #   time_decay = 1.0 + (0.020 × 95) = 2.90
+    #   age_mod = 1.12
+    #   comorbidity_mod = 1.15 (has HTN + T2DM — CRITICAL-3c)
+    #   ml_multiplier = 1.0 (neutral)
+    #   raw = 4.5 × 2.90 × 1.12 × 1.15 × 1.0 = 16.81 → capped 10.0 ✅
     # ───────────────────────────────────────────────────────────
     james = generate_patient(
         name="James Wilson",
@@ -489,7 +486,9 @@ def generate_demo_patients() -> list:
             "pain_score":       6,
         },
     )
-    james["_demo_note"] = "ESCALATION PATIENT: ESI-3→ESI-2 after ~50-70min simulation"
+    # CRITICAL-3c FIX: James has HTN + T2DM per README spec
+    james["has_comorbidity"] = True
+    james["_demo_note"] = "ESCALATION PATIENT: ESI-3→ESI-2 after ~90min simulation"
     patients.append(james)
 
     # ───────────────────────────────────────────────────────────
@@ -523,7 +522,12 @@ def generate_demo_patients() -> list:
     # ───────────────────────────────────────────────────────────
     # Patient 2: Aisha Patel — Low Acuity Control
     # 28yo F with sprained ankle. Must stay STABLE to demonstrate no over-triage.
-    # Risk ceiling: initial_risk ≈ 1.5, detn_rate=0.005, T+120 → risk ≈ 1.5+0.21=1.71
+    # New formula math at T+120+12min (132min total):
+    #   time_decay = 1.0 + (0.005 × 132) = 1.66
+    #   age_mod = 1.0 + max(0, 28-60) × 0.01 = 1.0 (under 60)
+    #   comorbidity_mod = 1.0
+    #   ml_multiplier ≈ 0.82 (low risk, proba ~0.2)
+    #   raw = 1.5 × 1.66 × 1.0 × 1.0 × 0.82 = 2.04 → STABLE ✅
     # ───────────────────────────────────────────────────────────
     aisha = generate_patient(
         name="Aisha Patel",
@@ -551,8 +555,6 @@ def generate_demo_patients() -> list:
     # Patient 3: Robert Torres — Secondary Drama
     # 68yo M, COPD exacerbation, has_comorbidity. Starts ESI-3.
     # Hits WARNING ~T+100, providing a second escalation subplot after James.
-    # detn_rate=0.10; initial_risk ≈ 6.0; at T+100min: 6.0 + 0.10×(20+100)×0.35 = 6.0+4.2=10.2
-    # Reaches threshold earlier due to SpO2 and RR deterioration.
     # ───────────────────────────────────────────────────────────
     robert = generate_patient(
         name="Robert Torres",
@@ -580,9 +582,7 @@ def generate_demo_patients() -> list:
     # ───────────────────────────────────────────────────────────
     # Patient 4: Sarah Kim — Clean Trauma Control
     # 35yo F laceration. Good vitals, stays STABLE throughout.
-    # Shows system doesn't panic over blood. detn_rate=0.08.
-    # At T+120+25=145min total: 5.5 + 0.08×145×0.35 = 5.5+4.06 = 9.5 → but vitals stay good
-    # so vitals_delta term stays near 0 → composite stays ~5.5-6.5, below 7.5  ✅
+    # Shows system doesn't panic over blood.
     # ───────────────────────────────────────────────────────────
     sarah = generate_patient(
         name="Sarah Kim",
@@ -608,10 +608,10 @@ def generate_demo_patients() -> list:
 
     # ───────────────────────────────────────────────────────────
     # Patient 5: David Brown — Age-Modifier Showcase
-    # 81yo M, sudden severe headache ("thunderclap" — subarachnoid until proven otherwise).
-    # age_mod=1.55 means even moderate vitals → high initial_risk.
-    # Stays WARNING/WATCH — demonstrates age amplification to judges without
-    # competing with James's escalation arc.
+    # 81yo M, sudden severe headache (subarachnoid until proven otherwise).
+    # age_mod = 1.0 + (81-60) × 0.01 = 1.21
+    # base_risk × age_mod = 7.5 × 1.21 = 9.075 → immediately WARNING/CRITICAL
+    # Stays WARNING — demonstrates age amplification to judges.
     # ───────────────────────────────────────────────────────────
     david = generate_patient(
         name="David Brown",
@@ -632,7 +632,7 @@ def generate_demo_patients() -> list:
             "pain_score":       9,
         },
     )
-    david["_demo_note"] = "ESI-2 neuro — stays WARNING, showcases age_modifier=1.55 effect"
+    david["_demo_note"] = "ESI-2 neuro — stays WARNING, showcases age_modifier=1.21 (new formula)"
     patients.append(david)
 
     # ───────────────────────────────────────────────────────────
@@ -769,6 +769,7 @@ def generate_critical_trauma_patient() -> dict:
 # Feature Vector Builder (for ML model input)
 # ─────────────────────────────────────────────────────────────
 
+# CRITICAL-3b FIX: Added "has_comorbidity" at index 15 (16th feature)
 FEATURE_NAMES = [
     "age",
     "esi_level",
@@ -785,13 +786,15 @@ FEATURE_NAMES = [
     "deterioration_rate",
     "age_modifier",
     "base_risk",
+    "has_comorbidity",   # index 15 — CRITICAL-3b: was missing, comorbidity had zero effect
 ]
 
 
 def patient_to_features(patient: dict) -> list:
     """
     Convert a patient dict into a flat feature vector for ML model inference.
-    Order must match FEATURE_NAMES exactly.
+    Order must match FEATURE_NAMES exactly (now 16 features).
+    CRITICAL-3a FIX: has_comorbidity added as the 16th feature (1.0 if True, 0.0 if False).
     """
     v = patient["vitals"]
     return [
@@ -810,6 +813,7 @@ def patient_to_features(patient: dict) -> list:
         patient["deterioration_rate"],
         patient["age_modifier"],
         patient["base_risk"],
+        1.0 if patient.get("has_comorbidity", False) else 0.0,  # CRITICAL-3a
     ]
 
 
@@ -829,6 +833,8 @@ def generate_training_dataset(n_samples: int = 5000) -> tuple:
         y: list of binary labels (0 or 1)
         feature_names: list of feature name strings
     """
+    # CRITICAL-4 partial: seed for reproducibility (main seed is in simulate_time_jump)
+    np.random.seed(42)
     X, y = [], []
 
     for _ in range(n_samples):
@@ -871,8 +877,12 @@ if __name__ == "__main__":
             f"ESI {p['esi_level']} | Risk {p['current_risk']:.1f} | "
             f"HR {v['heart_rate']} BP {v['bp_systolic']}/{v['bp_diastolic']} "
             f"SpO2 {v['spo2']}% Temp {v['temperature']}°F | "
+            f"has_comorbidity={p.get('has_comorbidity', False)} | "
             f"{p['chief_complaint'][:40]}"
         )
+
+    print("\n  James Wilson age_modifier:", age_risk_modifier(72))
+    print("  Expected: 1.12 (1.0 + (72-60) × 0.01)")
 
     print("\n🎲 RANDOM PATIENTS (5 samples):")
     random_pts = generate_random_patients(5)

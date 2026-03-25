@@ -133,7 +133,7 @@ export default function ProblemCard({ onLoadDemo, loading }) {
           {loading ? (
             <><Activity size={18} style={{ animation: 'spin 1s linear infinite' }} /> Loading…</>
           ) : (
-            <><Clock size={18} /> Load 6 Demo Patients → Watch James Wilson Escalate</>
+            <><Clock size={18} /> Load 10 Demo Patients → Watch James Wilson Escalate</>
           )}
         </motion.button>
 

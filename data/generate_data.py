@@ -429,7 +429,7 @@ def generate_patient(
 
 def generate_demo_patients() -> list:
     """
-    Returns 6 hand-crafted patients optimized for the live hackathon demo.
+    Returns 10 hand-crafted patients optimized for the live hackathon demo.
 
     Demo flow design:
       0. James Wilson    — 72yo abdominal pain  [STAR: ESI-3 → ESI-2, escalates at ~T+50-70]
@@ -438,6 +438,10 @@ def generate_demo_patients() -> list:
       3. Robert Torres   — 68yo respiratory       [ESI-3, hits WARNING ~T+100, secondary drama]
       4. Sarah Kim       — 35yo trauma laceation  [ESI-3, clean vitals, stays STABLE]
       5. David Brown     — 81yo neurological      [ESI-2, stays WARNING — age_modifier demo]
+      6. Rohan Sharma    — 42yo GI/GU             [ESI-3, stays STABLE - mild pain]
+      7. Priya Kapoor    — 61yo chest pain        [ESI-2, WARNING, stable high priority]
+      8. Arjun Singh     — 33yo minor injury      [ESI-4, STABLE]
+      9. Neha Desai      — 75yo respiratory       [ESI-2, WARNING, frail + short of breath]
 
     Guarantees (all derived from anchor-based risk = initial_risk + detn_rate×mins×0.35 + vitals_delta×0.55):
       - James:  initial_risk ≈ 6.8, reaches 7.5 by T+50 (conservative), 8.5+ by T+90
@@ -446,6 +450,10 @@ def generate_demo_patients() -> list:
       - Robert: initial_risk ≈ 6.1, detn_rate=0.10 → hits WARNING ~T+100
       - Sarah:  initial_risk ≈ 5.5, detn_rate=0.08 → stays below 7.5 through T+120
       - David:  initial_risk ≈ 7.8 (age_mod 1.55 × base 5.0), stays WARNING
+      - Rohan:  initial_risk ~ 5.5, stable
+      - Priya:  initial ESI-2 risk floor 7.0, stable WARNING
+      - Arjun:  initial_risk ~ 2.0, stable
+      - Neha:   initial ESI-2 risk floor 7.0, age-modifier pushes to WARNING
     """
 
     patients = []
@@ -626,6 +634,75 @@ def generate_demo_patients() -> list:
     )
     david["_demo_note"] = "ESI-2 neuro — stays WARNING, showcases age_modifier=1.55 effect"
     patients.append(david)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 6: Rohan Sharma — Moderate GI
+    # 42yo M, abdominal pain, stable vitals.
+    # ───────────────────────────────────────────────────────────
+    rohan = generate_patient(
+        name="Rohan Sharma", age=42, sex="Male", symptom_category="GI / GU",
+        esi_level=3, chief_complaint="moderate abdominal cramping and nausea",
+        arrival_minutes_ago=15,
+        vitals_override={
+            "heart_rate": 82, "bp_systolic": 128, "bp_diastolic": 78,
+            "spo2": 98, "respiratory_rate": 16, "temperature": 99.0,
+            "gcs": 15, "pain_score": 6,
+        },
+    )
+    rohan["_demo_note"] = "ESI-3 GI — stays STABLE, background patient"
+    patients.append(rohan)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 7: Priya Kapoor — Cardiac
+    # 61yo F, chest tightness. ESI-2.
+    # ───────────────────────────────────────────────────────────
+    priya = generate_patient(
+        name="Priya Kapoor", age=61, sex="Female", symptom_category="Chest Pain / Cardiac",
+        esi_level=2, chief_complaint="tightness in chest, shortness of breath",
+        arrival_minutes_ago=22,
+        vitals_override={
+            "heart_rate": 96, "bp_systolic": 142, "bp_diastolic": 88,
+            "spo2": 95, "respiratory_rate": 20, "temperature": 98.4,
+            "gcs": 15, "pain_score": 7,
+        },
+    )
+    priya["_demo_note"] = "ESI-2 Cardiac — background WARNING"
+    patients.append(priya)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 8: Arjun Singh — Low Acuity
+    # 33yo M, twisted knee.
+    # ───────────────────────────────────────────────────────────
+    arjun = generate_patient(
+        name="Arjun Singh", age=33, sex="Male", symptom_category="Minor Injury / Low Acuity",
+        esi_level=4, chief_complaint="twisted knee playing cricket, moderate swelling",
+        arrival_minutes_ago=55,
+        vitals_override={
+            "heart_rate": 78, "bp_systolic": 118, "bp_diastolic": 76,
+            "spo2": 99, "respiratory_rate": 14, "temperature": 98.6,
+            "gcs": 15, "pain_score": 5,
+        },
+    )
+    arjun["_demo_note"] = "ESI-4 Minor Injury — background STABLE"
+    patients.append(arjun)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 9: Neha Desai — Respiratory
+    # 75yo F, COPD exacerbation.
+    # ───────────────────────────────────────────────────────────
+    neha = generate_patient(
+        name="Neha Desai", age=75, sex="Female", symptom_category="Respiratory",
+        esi_level=2, chief_complaint="worsening shortness of breath, chronic cough",
+        arrival_minutes_ago=40,
+        vitals_override={
+            "heart_rate": 90, "bp_systolic": 136, "bp_diastolic": 82,
+            "spo2": 92, "respiratory_rate": 22, "temperature": 98.8,
+            "gcs": 15, "pain_score": 4,
+        },
+    )
+    neha["has_comorbidity"] = True
+    neha["_demo_note"] = "ESI-2 Respiratory — background WARNING with comorbidity"
+    patients.append(neha)
 
     return patients
 

@@ -23,8 +23,7 @@ Pipeline:
 Run this script once before starting app.py:
   (venv) $ python -m model.train_model
 
-Dependencies:
-  pip install scikit-learn shap numpy matplotlib
+
 """
 
 import os
@@ -552,7 +551,7 @@ def load_model(path: Path = MODEL_PATH) -> dict:
 
 def smoke_test(bundle: dict) -> bool:
     """
-    Validate the saved model against the 6 demo patients.
+    Validate the saved model against the 10 demo patients.
     Ensures the model produces sensible predictions on known cases.
     Returns True if all checks pass.
     """
@@ -715,7 +714,7 @@ def main():
     print("=" * 65)
 
     if all_pass:
-        print("\n🚀 Model ready! You can now run: streamlit run app.py")
+        print("\n🚀 Model ready!")
     else:
         print("\n⚠️  Some smoke tests failed — check predictions above.")
 

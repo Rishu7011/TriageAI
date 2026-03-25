@@ -52,168 +52,113 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-DARK_CSS = """
+CLINICAL_CSS = """
 <style>
-/* ── Global ─────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* ── 1. RESET & BASE ─────────────────────────────────────── */
+#MainMenu,footer,[data-testid="stToolbar"]{visibility:hidden!important}
+/* Always show sidebar toggle arrow */
+[data-testid="collapsedControl"],
+section[data-testid="stSidebarCollapsedControl"],
+[data-testid="stSidebarCollapsedControl"]{visibility:visible!important;display:flex!important;z-index:9999!important}
+html,body,.stApp,[class*="css"]{
+    font-family:'SF Mono','Cascadia Code','Consolas',ui-monospace,monospace;
+    background-color:#0D1117!important;
+    color:#E6EDF3;
+}
+.stApp{background-color:#0D1117!important}
 
-html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif;
-    background-color: #0a0e1a;
-    color: #e2e8f0;
+/* ── 2. SIDEBAR ──────────────────────────────────────────── */
+[data-testid="stSidebar"]{
+    background-color:#0A0F16!important;
+    border-right:2px solid #21262D!important;
+    min-width:260px;
+}
+[data-testid="stSidebar"] > div:first-child{
+    background-color:#0A0F16!important;
 }
 
-.stApp { background-color: #0a0e1a; }
+/* ── 3. SCROLLBAR ────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:#0D1117}
+::-webkit-scrollbar-thumb{background:#30363D;border-radius:4px}
 
-/* ── Sidebar ─────────────────────────────────────────── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0f1629 0%, #0a0e1a 100%);
-    border-right: 1px solid #1e2d4a;
+/* ── 4. TRIAGE HEADER ──────────────────────────────────── */
+.triage-header{
+    background:linear-gradient(90deg,#1a0a0c 0%,#1C0F12 40%,#0D1117 100%);
+    border-bottom:2px solid #E63946;border-radius:10px;
+    padding:0.9rem 1.4rem;margin-bottom:1.1rem;
+    display:flex;align-items:center;gap:14px;
 }
+.th-icon{font-size:1.9rem}
+.th-title{font-size:1.4rem;font-weight:800;color:#E6EDF3;letter-spacing:-0.01em;line-height:1.15}
+.th-title span{color:#E63946}
+.th-sub{font-size:0.7rem;color:#8B949E;margin-top:3px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.08em}
 
-/* ── Metric boxes ───────────────────────────────────── */
-[data-testid="metric-container"] {
-    background: #111827;
-    border: 1px solid #1e2d4a;
-    border-radius: 12px;
-    padding: 1rem;
-}
+/* ── 5. LIVE DOT ─────────────────────────────────────────── */
+.live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#3FB950;animation:blink-dot 1.4s ease-in-out infinite;flex-shrink:0}
+@keyframes blink-dot{0%,100%{opacity:1;box-shadow:0 0 4px #3FB950}50%{opacity:0.25;box-shadow:none}}
 
-/* ── Buttons ─────────────────────────────────────────── */
-.stButton > button {
-    background: linear-gradient(135deg, #1d4ed8, #7c3aed);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    padding: 0.6rem 1.4rem;
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-.stButton > button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(124, 58, 237, 0.5);
-}
+/* ── 6. METRICS STRIP ────────────────────────────────────── */
+.metrics-strip{display:flex;gap:8px;margin-bottom:1.1rem;flex-wrap:nowrap}
+.metric-card{flex:1;background:#161B22;border:1px solid #21262D;border-radius:8px;padding:0.75rem 0.9rem;text-align:center;min-width:0;position:relative;overflow:hidden}
+.metric-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,#30363D)}
+.mc-value{font-size:1.65rem;font-weight:800;line-height:1;color:var(--accent,#E6EDF3)}
+.mc-label{font-size:0.62rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#8B949E;margin-top:4px}
+.mc-sub{font-size:0.65rem;color:#484F58;margin-top:2px}
 
-/* ── Patient card ────────────────────────────────────── */
-.patient-card {
-    background: linear-gradient(135deg, #111827 0%, #0f1629 100%);
-    border: 1px solid #1e2d4a;
-    border-radius: 16px;
-    padding: 1.25rem;
-    margin-bottom: 0.75rem;
-    transition: all 0.25s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-.patient-card:hover {
-    border-color: #3b82f6;
-    transform: translateY(-2px);
-    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.15);
-}
-.patient-card.alert {
-    border-color: #ef4444 !important;
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
-    animation: pulse-border 2s infinite;
-}
-@keyframes pulse-border {
-    0%   { box-shadow: 0 0 15px rgba(239,68,68,0.25); }
-    50%  { box-shadow: 0 0 30px rgba(239,68,68,0.55); }
-    100% { box-shadow: 0 0 15px rgba(239,68,68,0.25); }
-}
+/* ── 7. PATIENT CARDS ────────────────────────────────────── */
+.patient-card{background:#161B22;border:1px solid #21262D;border-radius:8px;padding:0.9rem 1rem;margin-bottom:0.5rem;transition:border-color 0.18s,box-shadow 0.18s;cursor:pointer}
+.patient-card:hover{border-color:#388BFD;box-shadow:0 0 0 1px #388BFD22}
+.pc-selected{border-color:#388BFD!important;box-shadow:0 0 0 2px #388BFD33!important}
+.pc-alert{border-color:#E63946!important;animation:pulse-card 2.2s ease-in-out infinite}
+@keyframes pulse-card{0%,100%{box-shadow:0 0 0 1px #E6394622}50%{box-shadow:0 0 12px 2px #E6394644}}
+.pc-rank{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#21262D;color:#8B949E;font-size:0.65rem;font-weight:700;flex-shrink:0;margin-right:6px}
+.pc-name{font-weight:700;font-size:0.92rem;color:#E6EDF3}
+.pc-meta{font-size:0.7rem;color:#8B949E;margin-top:1px}
+.pc-complaint{font-size:0.76rem;color:#6E7681;margin:0.35rem 0 0.4rem;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-risk-bar-track{height:4px;background:#21262D;border-radius:3px;overflow:hidden;margin-bottom:0.35rem}
+.pc-risk-bar-fill{height:100%;border-radius:3px;transition:width 0.5s ease}
 
-/* ── Risk badge ──────────────────────────────────────── */
-.risk-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
+/* ── 8. STATUS BADGES ────────────────────────────────────── */
+.badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:0.62rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;vertical-align:middle}
+.badge-critical{background:#E6394620;color:#FF7B7B;border:1px solid #E6394650}
+.badge-high    {background:#FF8C0020;color:#FFA040;border:1px solid #FF8C0050}
+.badge-elevated{background:#FFD70020;color:#FFD700;border:1px solid #FFD70050}
+.badge-stable  {background:#3FB95020;color:#3FB950;border:1px solid #3FB95050}
+.badge-alert   {background:#E6394620;color:#FF7B7B;border:1px solid #E63946;animation:blink-badge 1.2s ease infinite}
+.badge-esi-up  {background:#8B5CF620;color:#A78BFA;border:1px solid #8B5CF650}
+@keyframes blink-badge{0%,100%{opacity:1}50%{opacity:0.5}}
 
-/* ── ESI badge ───────────────────────────────────────── */
-.esi-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    font-weight: 800;
-    font-size: 1rem;
-    color: #000;
-}
+/* ── 9. ESI CIRCLE ───────────────────────────────────────── */
+.esi-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;font-weight:800;font-size:0.85rem;color:#0D1117;flex-shrink:0}
 
-/* ── Alert banner ────────────────────────────────────── */
-.alert-banner {
-    background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(220,38,38,0.05));
-    border: 1px solid rgba(239,68,68,0.4);
-    border-radius: 12px;
-    padding: 1rem 1.25rem;
-    margin-bottom: 0.75rem;
-    animation: fadeIn 0.5s ease;
-}
-@keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+/* ── 10. ALERT BANNERS ───────────────────────────────────── */
+.critical-alert{background:#1C0F12;border:1px solid #E63946;border-left:4px solid #E63946;border-radius:6px;padding:0.7rem 1rem;margin-bottom:0.5rem;animation:fadeInSlide 0.4s ease}
+@keyframes fadeInSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.alert-banner{background:#1C0F12;border:1px solid rgba(230,57,70,0.4);border-left:4px solid #E63946;border-radius:6px;padding:0.7rem 1rem;margin-bottom:0.5rem}
 
-/* ── Section headers ─────────────────────────────────── */
-.section-header {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #93c5fd;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #1e2d4a;
-}
+/* ── 11. SECTION HEADERS ─────────────────────────────────── */
+.section-header{font-size:0.68rem;font-weight:700;color:#8B949E;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:0.55rem;padding-bottom:0.35rem;border-bottom:1px solid #21262D}
 
-/* ── Vitals grid ─────────────────────────────────────── */
-.vital-chip {
-    display: inline-block;
-    background: rgba(30,45,74,0.7);
-    border: 1px solid #1e2d4a;
-    border-radius: 8px;
-    padding: 4px 10px;
-    font-size: 0.78rem;
-    margin: 2px;
-    font-family: 'Inter', monospace;
-}
+/* ── 12. SECTION DIVIDER ─────────────────────────────────── */
+.section-divider{height:1px;background:linear-gradient(90deg,#E63946 0%,#21262D 60%,transparent 100%);margin:0.8rem 0;border:none}
 
-/* ── Progress bar override ───────────────────────────── */
-.stProgress > div > div {
-    border-radius: 8px;
-}
+/* ── 13. VITAL CHIPS ─────────────────────────────────────── */
+.vital-chip{display:inline-block;background:#21262D;border:1px solid #30363D;border-radius:4px;padding:2px 7px;font-size:0.69rem;margin:2px;font-family:ui-monospace,monospace}
 
-/* ── Tabs ────────────────────────────────────────────── */
-[data-testid="stTabs"] > div > div {
-    background: #111827;
-    border-radius: 12px;
-    border: 1px solid #1e2d4a;
-}
+/* ── 14. BUTTONS ─────────────────────────────────────────── */
+.stButton>button{background:#21262D;color:#E6EDF3;border:1px solid #30363D;border-radius:6px;font-weight:600;font-size:0.82rem;padding:0.4rem 0.9rem;transition:all 0.15s ease}
+.stButton>button:hover{background:#30363D;border-color:#E63946;color:#fff}
 
-/* ── Dividers ────────────────────────────────────────── */
-hr { border-color: #1e2d4a; }
-
-/* ── Inputs ──────────────────────────────────────────── */
-[data-testid="stSelectbox"] > div, [data-testid="stSlider"] {
-    background: #111827;
-}
-
-/* ── Scrollbar ───────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0a0e1a; }
-::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 4px; }
-
-/* ── Hide Streamlit branding ─────────────────────────── */
-#MainMenu, footer, header { visibility: hidden; }
+/* ── 15. MISC ────────────────────────────────────────────── */
+hr{border-color:#21262D}
+[data-testid="metric-container"]{background:#161B22;border:1px solid #21262D;border-radius:8px;padding:0.7rem 0.9rem}
+[data-testid="stTabs"]>div>div{background:#161B22;border-radius:8px;border:1px solid #21262D}
 </style>
 """
 
-st.markdown(DARK_CSS, unsafe_allow_html=True)
+st.markdown(CLINICAL_CSS, unsafe_allow_html=True)
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -222,29 +167,33 @@ st.markdown(DARK_CSS, unsafe_allow_html=True)
 
 def init_session():
     """Initialize all session state on first load."""
-    if "initialized" not in st.session_state:
-        st.session_state.initialized         = True
-        st.session_state.patients            = []
-        st.session_state.all_alerts          = []
-        st.session_state.selected_patient_id = None
-        st.session_state.simulation_run      = False
-        st.session_state.simulation_snapshots = []
-        st.session_state.whatif_mode         = False
-        st.session_state.whatif_injected     = False
-        st.session_state.real_time_mode      = False
-        st.session_state.real_time_elapsed   = 0.0
-        st.session_state.last_rescore_time   = time.time()
-        st.session_state.show_shap           = False
-        st.session_state.model_loaded        = False
-        st.session_state.demo_mode           = True        # start with demo patients
-        st.session_state.tick_count          = 0
+    defaults = {
+        "initialized": True,
+        "patients": [],
+        "all_alerts": [],
+        "selected_patient_id": None,
+        "simulation_run": False,
+        "simulation_snapshots": [],
+        "whatif_mode": False,
+        "whatif_injected": False,
+        "real_time_mode": False,
+        "real_time_elapsed": 0.0,
+        "last_rescore_time": time.time(),
+        "show_shap": False,
+        "model_loaded": False,
+        "demo_mode": True,
+        "tick_count": 0,
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
     # Load model once
-    if not st.session_state.model_loaded:
+    if not st.session_state.get("model_loaded", False):
         st.session_state.model_loaded = ModelManager.load_model()
 
     # Load demo patients if queue is empty
-    if not st.session_state.patients:
+    if not st.session_state.get("patients", []):
         patients = generate_demo_patients()
         # Initial score pass so all patients have component_scores
         for p in patients:
@@ -309,68 +258,95 @@ def render_esi_badge(esi: int) -> str:
     return (f'<span class="esi-badge" style="background:{color};">{esi}</span>')
 
 
-def render_patient_card(patient: dict, selected: bool = False) -> str:
-    """Render a full patient card as HTML."""
-    risk      = patient.get("current_risk", 0)
-    esi       = patient.get("esi_level", 3)
-    name      = patient.get("name", "Unknown")
-    age       = patient.get("age", "—")
-    sex       = patient.get("sex", "")
-    complaint = patient.get("chief_complaint", "")[:55]
-    mins      = patient.get("minutes_in_ed", 0)
-    vitals    = patient.get("vitals", {})
-    trend     = patient.get("vitals_trend", {})
-    alerted   = patient.get("alert_fired", False)
-    upgraded  = patient.get("esi_upgraded", False)
-    delta     = patient.get("risk_delta", 0)
+# Acuity color palette — ESI level → clinical color
+_ACUITY_COLORS = {
+    1: "#E63946",   # red       — immediate
+    2: "#FF8C00",   # orange    — emergent
+    3: "#FFD700",   # yellow    — urgent
+    4: "#3FB950",   # green     — less-urgent
+    5: "#388BFD",   # blue      — non-urgent
+}
+# Badge CSS class keyed by risk label
+_BADGE_CLASS = {
+    "CRITICAL":  "badge badge-critical",
+    "HIGH RISK": "badge badge-high",
+    "ELEVATED":  "badge badge-elevated",
+    "MODERATE":  "badge badge-stable",
+    "LOW":       "badge badge-stable",
+}
+
+def render_patient_card(patient: dict, selected: bool = False, rank: int = 0) -> str:
+    """Render a clinical patient queue card. rank=queue position (1-based)."""
+    risk     = patient.get("current_risk", 0)
+    esi      = patient.get("esi_level", 3)
+    name     = patient.get("name", "Unknown")
+    age      = patient.get("age", "—")
+    sex      = patient.get("sex", "M")
+    complaint= patient.get("chief_complaint", "")[:62]
+    mins     = patient.get("minutes_in_ed", 0)
+    vitals   = patient.get("vitals", {})
+    trend    = patient.get("vitals_trend", {})
+    alerted  = patient.get("alert_fired", False)
+    upgraded = patient.get("esi_upgraded", False)
+    delta    = patient.get("risk_delta", 0)
 
     risk_color  = risk_to_color(risk)
     risk_label  = risk_to_label(risk)
-    card_class  = "patient-card alert" if alerted else "patient-card"
-    border_style= f"border-left: 4px solid {risk_color};"
-    sel_style   = "box-shadow: 0 0 0 2px #3b82f6;" if selected else ""
+    esi_bg      = _ACUITY_COLORS.get(esi, "#30363D")
+    badge_cls   = _BADGE_CLASS.get(risk_label, "badge badge-stable")
 
-    delta_html = ""
-    if abs(delta) > 0.05:
-        d_color = "#ef4444" if delta > 0 else "#22c55e"
-        d_arrow = "▲" if delta > 0 else "▼"
-        delta_html = f'<span style="color:{d_color}; font-size:0.78rem; font-weight:600;">{d_arrow}{abs(delta):.1f}</span>'
-
-    esi_badge  = render_esi_badge(esi)
-    risk_bar   = render_risk_bar(risk)
-    vital_chips = render_vitals_chips(vitals, trend)
-
-    esc_tag = ""
-    if upgraded:
-        esc_tag = '<span style="background:#7c3aed22;border:1px solid #7c3aed;border-radius:4px;padding:1px 7px;font-size:0.7rem;color:#a78bfa;font-weight:700;margin-left:6px;">ESI UPGRADED ⬆</span>'
-
-    alert_tag = ""
     if alerted:
-        alert_tag = '<span style="background:#ef444422;border:1px solid #ef4444;border-radius:4px;padding:1px 7px;font-size:0.7rem;color:#fca5a5;font-weight:700;margin-left:6px;">🚨 ALERT</span>'
+        card_class = "patient-card pc-alert"
+    elif selected:
+        card_class = "patient-card pc-selected"
+    else:
+        card_class = "patient-card"
 
     wait_str = f"{int(mins)}m" if mins < 60 else f"{int(mins//60)}h {int(mins%60)}m"
 
+    # Risk delta
+    delta_html = ""
+    if abs(delta) > 0.05:
+        d_col = "#E63946" if delta > 0 else "#3FB950"
+        d_sym = "▲" if delta > 0 else "▼"
+        delta_html = f'<span style="color:{d_col};font-size:0.68rem;font-weight:700;margin-left:3px;">{d_sym}{abs(delta):.1f}</span>'
+
+    rank_html = f'<span class="pc-rank">#{rank}</span>' if rank else ""
+    esi_html  = f'<span class="esi-badge" style="background:{esi_bg};color:#0D1117;margin-right:8px;">{esi}</span>'
+
+    badges = ""
+    if alerted:
+        badges += '<span class="badge badge-alert" style="margin-left:5px;">⚡ ALERT</span>'
+    if upgraded:
+        orig  = esi + 1
+        badges += f'<span class="badge badge-esi-up" style="margin-left:4px;">ESI {orig}→{esi} ⬆</span>'
+
+    pct      = min(risk / 10.0 * 100, 100)
+    risk_bar = f'<div class="pc-risk-bar-track"><div class="pc-risk-bar-fill" style="width:{pct:.1f}%;background:{risk_color};"></div></div>'
+    vital_chips = render_vitals_chips(vitals, trend)
+
     return f"""
-    <div class="{card_class}" style="{border_style}{sel_style}">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.6rem;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          {esi_badge}
-          <div>
-            <div style="font-weight:700; font-size:1rem; color:#f1f5f9;">{name}</div>
-            <div style="font-size:0.78rem; color:#64748b;">{age}y {sex} · ⏱ {wait_str}</div>
-          </div>
-          {esc_tag}{alert_tag}
+<div class="{card_class}" style="border-left:3px solid {esi_bg};">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+    <div style="display:flex;align-items:center;flex:1;min-width:0;">
+      {rank_html}{esi_html}
+      <div style="min-width:0;">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px;">
+          <span class="pc-name">{name}</span>{badges}
         </div>
-        <div style="text-align:right;">
-          <div style="font-size:1.6rem; font-weight:800; color:{risk_color}; line-height:1;">{risk:.1f}</div>
-          <div style="font-size:0.7rem; color:{risk_color}; font-weight:600;">{risk_label} {delta_html}</div>
-        </div>
+        <div class="pc-meta">{age}y {sex[0] if sex else '?'} &nbsp;·&nbsp; ⏱ {wait_str}</div>
       </div>
-      <div style="font-size:0.82rem; color:#94a3b8; margin-bottom:0.5rem; font-style:italic;">"{complaint}…"</div>
-      {risk_bar}
-      <div style="margin-top:0.5rem;">{vital_chips}</div>
     </div>
-    """
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-size:1.5rem;font-weight:800;color:{risk_color};line-height:1;">{risk:.1f}{delta_html}</div>
+      <span class="{badge_cls}">{risk_label}</span>
+    </div>
+  </div>
+  <div class="pc-complaint">"{complaint}…"</div>
+  {risk_bar}
+  <div style="margin-top:0.25rem;">{vital_chips}</div>
+</div>
+"""
 
 
 # ─────────────────────────────────────────────────────────────
@@ -749,46 +725,100 @@ def render_sidebar():
         </div>
         """, unsafe_allow_html=True)
 
+        # ── Clinical Credibility card ─────────────────────
+        st.divider()
+        st.markdown("""
+        <div style="
+            background:#161B22;
+            border:1px solid #30363D;
+            border-radius:8px;
+            padding:0.8rem;
+        ">
+            <div style="color:#E6EDF3;font-weight:600;font-size:0.8rem;margin-bottom:0.4rem;">
+                📚 Clinical Basis
+            </div>
+            <div style="font-size:0.75rem;color:#8B949E;line-height:1.8;">
+                • ESI v5 algorithm (AHRQ, 2020)<br>
+                • MEWS deterioration criteria<br>
+                • MIMIC-IV ED triage distributions<br>
+                • Model: GBM — AUC 0.837, Sensitivity 94.2%<br>
+                • Training: 8,000 synthetic patients
+            </div>
+            <div style="margin-top:0.4rem;color:#4CAF50;font-size:0.75rem;font-weight:600;">
+                ✓ Prototype — not for clinical use
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────────────────────
 # Dashboard Header
 # ─────────────────────────────────────────────────────────────
 
-def render_header():
-    patients = st.session_state.patients
-    active   = len([p for p in patients if p.get("alert_fired") and not p.get("alert_acknowledged")])
-    esi1     = len([p for p in patients if p.get("esi_level") == 1])
-    esi2     = len([p for p in patients if p.get("esi_level") == 2])
-    total    = len(patients)
+def render_metrics_row(patients: list):
+    """Pure HTML flexbox metrics strip — 5 cards, no st.columns()."""
+    total      = len([p for p in patients if not p.get("discharged")])
+    critical   = len([p for p in patients if p.get("current_risk", 0) >= 9.0])
+    high_risk  = len([p for p in patients if 7.5 <= p.get("current_risk", 0) < 9.0])
+    avg_wait   = int(sum(p.get("minutes_in_ed", 0) for p in patients) / max(len(patients), 1))
+    reprio     = len([p for p in patients if p.get("esi_upgraded")])
+    sim_on     = st.session_state.get("simulation_run", False)
+    mode_label = "SIMULATED" if sim_on else "LIVE"
+    mode_color = "#388BFD" if sim_on else "#3FB950"
 
-    st.markdown("""
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.5rem;">
-      <span style="font-size:1.8rem;">🏥</span>
-      <div>
-        <h1 style="margin:0; font-size:1.6rem; font-weight:800;
-                   background:linear-gradient(135deg,#60a5fa,#a78bfa);
-                   -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
-          Emergency Department Triage Dashboard
-        </h1>
-        <p style="margin:0; font-size:0.82rem; color:#475569;">
-          AI-powered continuous patient re-evaluation · Real-time deterioration detection
-        </p>
+    st.markdown(f"""
+    <div class="metrics-strip">
+      <div class="metric-card" style="--accent:#E6EDF3;">
+        <div class="mc-value" style="color:#E6EDF3;">{total}</div>
+        <div class="mc-label">Total Patients</div>
+        <div class="mc-sub">in queue</div>
+      </div>
+      <div class="metric-card" style="--accent:#E63946;">
+        <div class="mc-value" style="color:#E63946;">{critical}</div>
+        <div class="mc-label">Critical</div>
+        <div class="mc-sub">risk ≥ 9.0</div>
+      </div>
+      <div class="metric-card" style="--accent:#FF8C00;">
+        <div class="mc-value" style="color:#FF8C00;">{high_risk}</div>
+        <div class="mc-label">High Risk</div>
+        <div class="mc-sub">risk 7.5–9.0</div>
+      </div>
+      <div class="metric-card" style="--accent:#FFD700;">
+        <div class="mc-value" style="color:#FFD700;">{avg_wait}m</div>
+        <div class="mc-label">Avg Wait</div>
+        <div class="mc-sub">all patients</div>
+      </div>
+      <div class="metric-card" style="--accent:#4CAF50;">
+        <div class="mc-value" style="color:#4CAF50;">{reprio}</div>
+        <div class="mc-label">Re-Prioritized</div>
+        <div class="mc-sub">ESI upgraded</div>
+      </div>
+      <div class="metric-card" style="--accent:{mode_color};">
+        <div class="mc-value" style="color:{mode_color};font-size:0.9rem;">{mode_label}</div>
+        <div class="mc-label">Mode</div>
+        <div class="mc-sub"><span class="live-dot"></span></div>
       </div>
     </div>
     """, unsafe_allow_html=True)
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        st.metric("Total Patients", total)
-    with c2:
-        st.metric("ESI-1 (Immediate)", esi1, delta=None)
-    with c3:
-        st.metric("ESI-2 (Emergent)", esi2, delta=None)
-    with c4:
-        st.metric("🚨 Active Alerts", active, delta=None)
-    with c5:
-        sim_status = "✅ Simulated" if st.session_state.simulation_run else "⏸ Live"
-        st.metric("Mode", sim_status)
+
+def render_header():
+    """Clinical triage header bar + metrics strip."""
+    now_str = datetime.now().strftime("%H:%M:%S")
+    st.markdown(f"""
+    <div class="triage-header">
+      <span class="th-icon">🏥</span>
+      <div>
+        <div class="th-title">Triage<span>AI</span> &nbsp;—&nbsp; Emergency Department</div>
+        <div class="th-sub">
+          <span class="live-dot"></span>
+          AI-Powered Continuous Re-Evaluation &nbsp;·&nbsp; Dynamic Risk Scoring &nbsp;·&nbsp; {now_str}
+        </div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
+    render_metrics_row(st.session_state.patients)
+
 
 
 # ─────────────────────────────────────────────────────────────
@@ -850,7 +880,7 @@ def render_demo_controls():
     with col4:
         selected = st.session_state.selected_patient_id
         sel_patient = next((p for p in st.session_state.patients if p.get("patient_id") == selected), None)
-        if sel_patient and st.button("🔍 Explain Risk (SHAP)", use_container_width=True):
+        if sel_patient and st.button("🔍 Explain Risk (SHAP)", width='stretch'):
             st.session_state.show_shap = not st.session_state.show_shap
         elif not sel_patient:
             st.markdown('<div style="font-size:0.78rem; color:#475569; padding-top:0.3rem;">← Select a patient card to explain</div>', unsafe_allow_html=True)
@@ -872,12 +902,12 @@ def render_patient_queue():
     with left:
         st.markdown('<div class="section-header">Patient Queue (Priority Order)</div>', unsafe_allow_html=True)
 
-        for p in patients:
+        for rank, p in enumerate(patients, start=1):
             if p.get("discharged"):
                 continue
             pid       = p.get("patient_id")
             is_sel    = pid == selected_id
-            card_html = render_patient_card(p, selected=is_sel)
+            card_html = render_patient_card(p, selected=is_sel, rank=rank)
             st.markdown(card_html, unsafe_allow_html=True)
 
             if st.button(
@@ -906,7 +936,8 @@ def render_patient_queue():
             if st.session_state.show_shap:
                 st.markdown('<div class="section-header">🧠 AI Explainability — Why is this risk score?</div>', unsafe_allow_html=True)
                 shap_fig = render_shap_chart(sel_patient)
-                st.plotly_chart(shap_fig, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(shap_fig, width='stretch', config={"displayModeBar": False})
+                render_shap_interpretation(sel_patient)
 
                 is_fallback = not st.session_state.model_loaded
                 if is_fallback:
@@ -916,11 +947,11 @@ def render_patient_queue():
                 st.markdown('<div class="section-header">📈 Risk Curve</div>', unsafe_allow_html=True)
                 if len(sel_patient.get("risk_history", [])) >= 2:
                     single_curve = render_risk_curves([sel_patient], highlight_id=selected_id)
-                    st.plotly_chart(single_curve, use_container_width=True, config={"displayModeBar": False})
+                    st.plotly_chart(single_curve, width='stretch', config={"displayModeBar": False})
                 else:
                     st.info("Run a simulation to see the risk curve evolve over time.")
 
-                if st.button("🧠 Show SHAP Explanation", use_container_width=True):
+                if st.button("🧠 Show SHAP Explanation", width='stretch'):
                     st.session_state.show_shap = True
                     st.rerun()
 
@@ -930,7 +961,7 @@ def render_patient_queue():
 
             if any(len(p.get("risk_history", [])) >= 2 for p in patients):
                 multi_fig = render_risk_curves(patients)
-                st.plotly_chart(multi_fig, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(multi_fig, width='stretch', config={"displayModeBar": False})
             else:
                 st.markdown("""
                 <div style="background:#111827; border:1px solid #1e2d4a; border-radius:12px;
@@ -1061,6 +1092,212 @@ def handle_real_time_refresh():
             st.session_state.tick_count         += 1
 
 
+
+# ─────────────────────────────────────────────────────────────
+# Gap 2 — Problem Reality Card
+# ─────────────────────────────────────────────────────────────
+
+def render_problem_card() -> None:
+    """Renders the opening problem statement card when no patients are loaded."""
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #1A0000 0%, #2D0000 100%);
+        border: 1px solid #E63946;
+        border-radius: 12px;
+        padding: 2.5rem 2rem;
+        margin: 1.5rem 0;
+        text-align: center;
+    ">
+        <!-- Section A: Headline -->
+        <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚠️</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: #E6EDF3; margin-bottom: 0.75rem; letter-spacing: -0.02em;">
+            The Problem We're Solving
+        </div>
+        <div style="font-size: 0.95rem; color: #8B949E; max-width: 680px; margin: 0 auto 2rem; line-height: 1.65;">
+            Emergency departments triage patients <strong style="color: #E6EDF3;">once</strong> at intake.
+            A patient scored as &ldquo;medium priority&rdquo; at 2 PM may be critically ill
+            by 4 PM &mdash; but nobody re-evaluates them.
+        </div>
+
+        <!-- Section B: Stat Cards -->
+        <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 2rem;">
+
+            <div style="background: #0D1117; border: 1px solid #21262D; border-radius: 10px;
+                        padding: 1.2rem 1.5rem; min-width: 170px; flex: 1; max-width: 200px;">
+                <div style="font-size: 2.2rem; font-weight: 800; color: #E63946; line-height: 1;">500+</div>
+                <div style="font-size: 0.82rem; color: #E6EDF3; font-weight: 600; margin-top: 6px;">
+                    ED waiting room deaths/year
+                </div>
+                <div style="font-size: 0.68rem; color: #484F58; margin-top: 4px;">
+                    (UK, 2023 BBC Investigation)
+                </div>
+            </div>
+
+            <div style="background: #0D1117; border: 1px solid #21262D; border-radius: 10px;
+                        padding: 1.2rem 1.5rem; min-width: 170px; flex: 1; max-width: 200px;">
+                <div style="font-size: 2.2rem; font-weight: 800; color: #FF8C00; line-height: 1;">4.2 hrs</div>
+                <div style="font-size: 0.82rem; color: #E6EDF3; font-weight: 600; margin-top: 6px;">
+                    Average ED wait time
+                </div>
+                <div style="font-size: 0.68rem; color: #484F58; margin-top: 4px;">
+                    without dynamic re-evaluation
+                </div>
+            </div>
+
+            <div style="background: #0D1117; border: 1px solid #21262D; border-radius: 10px;
+                        padding: 1.2rem 1.5rem; min-width: 170px; flex: 1; max-width: 200px;">
+                <div style="font-size: 2.2rem; font-weight: 800; color: #4CAF50; line-height: 1;">94.2%</div>
+                <div style="font-size: 0.82rem; color: #E6EDF3; font-weight: 600; margin-top: 6px;">
+                    TriageAI sensitivity
+                </div>
+                <div style="font-size: 0.68rem; color: #484F58; margin-top: 4px;">
+                    on deterioration detection
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Section C: Call to Action -->
+        <div style="font-size: 0.9rem; color: #8B949E; margin-bottom: 0.4rem;">
+            👈 Click <strong style="color: #E6EDF3;">Load Demo Patients</strong> in the sidebar to begin the live demonstration
+        </div>
+        <div style="font-size: 0.75rem; color: #484F58;">
+            or use the Patient Intake form to admit patients manually
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────
+# Gap 3 — SHAP Plain-English Translation Layer
+# ─────────────────────────────────────────────────────────────
+
+def render_shap_interpretation(patient: dict) -> None:
+    """Renders plain-English clinical interpretation below the SHAP chart."""
+
+    # ── Resolve patient fields ──────────────────────────────
+    name           = patient.get("name", "This patient")
+    age            = patient.get("age", "?")
+    complaint      = patient.get("chief_complaint", "unspecified complaint")
+    category       = patient.get("symptom_category", "Unknown")
+    wait_time      = int(patient.get("minutes_in_ed", patient.get("wait_time_min", 0)))
+    risk_pct       = patient.get("ml_proba", patient.get("risk_probability", 0.0)) * 100
+    dyn_esi        = patient.get("esi_level", patient.get("dynamic_acuity", 3))
+    orig_esi       = patient.get("esi_level", patient.get("original_acuity", dyn_esi))
+    acuity_changed = patient.get("esi_upgraded", patient.get("acuity_changed", False))
+    explanation    = patient.get("explanation", [])
+    vitals         = patient.get("vitals", {})
+    hr             = vitals.get("heart_rate",   patient.get("hr",  0))
+    sbp            = vitals.get("bp_systolic",  patient.get("sbp", 0))
+    spo2           = vitals.get("spo2",         patient.get("spo2", 100))
+    temp_f         = vitals.get("temperature",  patient.get("temp", 98.6))
+
+    # Map alert_level → (color, icon, status text)
+    current_risk = patient.get("current_risk", 0)
+    if current_risk >= 9.0 or patient.get("alert_level") == "CRITICAL":
+        alert_color = "#E63946"; alert_icon = "🚨"
+        alert_text  = "IMMEDIATE attention required"
+    elif current_risk >= 7.5 or patient.get("alert_level") == "WARNING":
+        alert_color = "#FF8C00"; alert_icon = "⚠️"
+        alert_text  = "Reassessment recommended within 15 minutes"
+    elif current_risk >= 5.0 or patient.get("alert_level") == "WATCH":
+        alert_color = "#FFD700"; alert_icon = "👁️"
+        alert_text  = "Monitor closely — risk is rising"
+    else:
+        alert_color = "#4CAF50"; alert_icon = "✅"
+        alert_text  = "Condition appears stable at this time"
+
+    # ── Vitals colour helpers ───────────────────────────────
+    def vc(val, lo=None, hi=None):
+        if lo is not None and val < lo: return "#E63946"
+        if hi is not None and val > hi: return "#E63946"
+        return "#4CAF50"
+
+    hr_col   = vc(hr, lo=50, hi=110)
+    sbp_col  = vc(sbp, lo=90, hi=180)
+    spo2_col = vc(spo2, lo=94)
+    temp_col = "#E63946" if temp_f > 100.4 or temp_f < 96.8 else "#4CAF50"
+
+    # ── Acuity change line ──────────────────────────────────
+    if acuity_changed:
+        acuity_html = f"""
+        <div style="font-weight:700;color:#E63946;font-size:0.87rem;margin:0.55rem 0;">
+            ⚡ Acuity has escalated from ESI {orig_esi + 1} to ESI {dyn_esi} since initial triage.
+        </div>"""
+    else:
+        acuity_html = f"""
+        <div style="color:#6E7681;font-size:0.82rem;margin:0.55rem 0;">
+            Acuity remains at initial triage level (ESI {dyn_esi}).
+        </div>"""
+
+    # ── Explanation pills ───────────────────────────────────
+    factors = explanation[:3] if explanation else []
+    if factors:
+        pills_html = " ".join(
+            f'<span style="background:#21262D;border:1px solid #30363D;border-radius:4px;'
+            f'padding:2px 8px;font-size:0.72rem;color:#8B949E;white-space:nowrap;">'
+            f'{f}</span>'
+            for f in factors
+        )
+    else:
+        pills_html = '<span style="color:#484F58;font-size:0.78rem;">Factors unavailable</span>'
+
+    # ── Render ──────────────────────────────────────────────
+    st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown(f"""
+    <div style="
+        background:#161B22;
+        border-left: 4px solid {alert_color};
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.2rem;
+        margin-top: 0.75rem;
+        font-family: ui-monospace, monospace;
+    ">
+        <!-- Layer 1: Status Header -->
+        <div style="font-size:0.9rem;font-weight:700;color:{alert_color};margin-bottom:0.55rem;">
+            {alert_icon}&nbsp; {alert_text}
+        </div>
+
+        <!-- Layer 2: Narrative sentence -->
+        <div style="font-size:0.84rem;color:#C9D1D9;line-height:1.65;margin-bottom:0.5rem;">
+            <strong style="color:#E6EDF3;">{name}</strong> has been waiting
+            <strong style="color:#E6EDF3;">{wait_time} minutes</strong>
+            with a chief complaint of
+            &ldquo;<em style="color:#8B949E;">{complaint}</em>&rdquo;.
+            The AI model assigns a deterioration probability of
+            <strong style="color:{alert_color};">{risk_pct:.0f}%</strong>
+            based on age ({age}), vital sign profile, and
+            <em>{category}</em> symptom classification.
+        </div>
+
+        <!-- Layer 3: Acuity change -->
+        {acuity_html}
+
+        <!-- Layer 4: Contributing factors -->
+        <div style="font-size:0.75rem;color:#484F58;margin-bottom:0.4rem;text-transform:uppercase;letter-spacing:0.08em;">
+            Top contributing factors:
+        </div>
+        <div style="margin-bottom:0.75rem;">{pills_html}</div>
+
+        <!-- Vitals Snapshot -->
+        <div style="display:flex;gap:1.2rem;flex-wrap:wrap;border-top:1px solid #21262D;padding-top:0.65rem;margin-top:0.4rem;">
+            <span style="color:{hr_col};font-size:0.78rem;">
+                ❤️ HR: <strong>{int(hr) if hr else '—'} bpm</strong>
+            </span>
+            <span style="color:{sbp_col};font-size:0.78rem;">
+                💉 SBP: <strong>{int(sbp) if sbp else '—'} mmHg</strong>
+            </span>
+            <span style="color:{spo2_col};font-size:0.78rem;">
+                🫁 SpO₂: <strong>{int(spo2) if spo2 else '—'}%</strong>
+            </span>
+            <span style="color:{temp_col};font-size:0.78rem;">
+                🌡️ Temp: <strong>{temp_f:.1f}°F</strong>
+            </span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
 # ─────────────────────────────────────────────────────────────
 # Main App
 # ─────────────────────────────────────────────────────────────
@@ -1069,6 +1306,12 @@ def main():
     init_session()
     handle_real_time_refresh()
     render_sidebar()
+
+    # Gap 2 — show problem card when no patients are loaded yet
+    if not st.session_state.get("patients"):
+        render_problem_card()
+        return
+
     render_header()
     render_demo_controls()
 

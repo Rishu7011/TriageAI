@@ -130,6 +130,16 @@ class ModelManager:
             return False
 
     @classmethod
+    def _engineer(cls, feature_vector: list) -> np.ndarray:
+        """Apply the same 15→27 feature engineering used during training."""
+        try:
+            from model.train_model import engineer_features
+            return engineer_features([feature_vector])[0]  # shape (27,)
+        except Exception:
+            # Fallback: return raw vector (model will error gracefully)
+            return np.array(feature_vector, dtype=float)
+
+    @classmethod
     def predict_risk_proba(cls, feature_vector: list) -> float:
         """
         Run ML inference. Returns probability (0.0–1.0) of deterioration.
@@ -140,7 +150,7 @@ class ModelManager:
             return None
 
         try:
-            X = np.array(feature_vector).reshape(1, -1)
+            X = cls._engineer(feature_vector).reshape(1, -1)
             if cls._scaler is not None:
                 X = cls._scaler.transform(X)
             proba = cls._model.predict_proba(X)[0][1]  # P(class=1 = deterioration)
@@ -154,41 +164,55 @@ class ModelManager:
         """
         Compute SHAP values for a single patient feature vector.
         Returns a dict with shap_values list + base_value, or None if unavailable.
-
-        SHAP values here are the force plot values (not the class-0 vs class-1 split):
-        each value represents how much that feature pushed the score up or down
-        relative to the base (expected model output).
+        Handles both old SHAP (<0.42, returns list) and new SHAP (>=0.42, returns ndarray).
         """
         if cls._shap_explainer is None:
             return None
 
         try:
             import shap
-            X = np.array(feature_vector).reshape(1, -1)
+            import numpy as np
+            X = cls._engineer(feature_vector).reshape(1, -1)
             if cls._scaler is not None:
                 X = cls._scaler.transform(X)
 
-            # TreeExplainer returns shape (n_samples, n_features) for binary classification
             shap_output = cls._shap_explainer.shap_values(X)
 
-            # For binary GBM, shap_values returns list of two arrays [class0, class1]
-            # We want class=1 (deterioration) values
+            # ── Extract class-1 (deterioration) SHAP values ──────
+            # Old SHAP: returns list [class0_array, class1_array], each shape (1, n_feat)
+            # New SHAP: returns ndarray shape (1, n_feat) or (1, n_feat, 2)
             if isinstance(shap_output, list):
-                vals = shap_output[1][0]          # class-1 SHAP values for this sample
-                base = cls._shap_explainer.expected_value[1]
+                # Old API — list[class0, class1]
+                vals = np.array(shap_output[1]).flatten()
+                ev = cls._shap_explainer.expected_value
+                base = float(np.array(ev[1]).flatten()[0]) if hasattr(ev, '__len__') else float(ev)
+            elif isinstance(shap_output, np.ndarray):
+                if shap_output.ndim == 3:
+                    # Shape (1, n_feat, 2) — last axis is [class0, class1]
+                    vals = shap_output[0, :, 1]
+                    ev = cls._shap_explainer.expected_value
+                    base = float(np.array(ev).flatten()[-1])
+                else:
+                    # Shape (1, n_feat) — single output GBM
+                    vals = shap_output[0]
+                    ev = cls._shap_explainer.expected_value
+                    base = float(np.array(ev).flatten()[0])
             else:
-                vals = shap_output[0]             # single output (regression-style)
-                base = cls._shap_explainer.expected_value
+                # shap.Explanation object (SHAP >= 0.42)
+                vals = np.array(shap_output.values).flatten()
+                ev   = cls._shap_explainer.expected_value
+                base = float(np.array(ev).flatten()[-1]) if hasattr(ev, '__len__') else float(ev)
 
             return {
-                "shap_values":   [float(v) for v in vals],
-                "base_value":    float(base),
-                "feature_names": FEATURE_NAMES,
+                "shap_values":    [float(v) for v in vals],
+                "base_value":     base,
+                "feature_names":  FEATURE_NAMES,
                 "feature_values": [float(v) for v in feature_vector],
             }
         except Exception as e:
             print(f"[ModelManager] SHAP error: {e}")
             return None
+
 
     @classmethod
     def is_available(cls) -> bool:

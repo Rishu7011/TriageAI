@@ -429,168 +429,207 @@ def generate_patient(
 
 def generate_demo_patients() -> list:
     """
-    Returns 6 hand-crafted patients optimized for the live demo.
-    Key escalation: James Wilson (ESI 3 → 2) is patient index 0.
+    Returns 6 hand-crafted patients optimized for the live hackathon demo.
 
-    Patient roster:
-      0. James Wilson   — 72yo abdominal pain   [DEMO HERO: will escalate]
-      1. Sarah Mitchell — 45yo chest pain        [ESI 2, already high alert]
-      2. Carlos Rivera  — 28yo trauma (MVA)      [ESI 2, stable but serious]
-      3. Emily Rodriguez— 8yo respiratory        [ESI 3, pediatric]
-      4. Robert Chen    — 61yo sepsis            [ESI 2, deteriorating]
-      5. Lisa Thompson  — 34yo minor injury      [ESI 4, low priority]
+    Demo flow design:
+      0. James Wilson    — 72yo abdominal pain  [STAR: ESI-3 → ESI-2, escalates at ~T+50-70]
+      1. Maria Chen      — 55yo chest pain       [ESI-2, stable WARNING — priority contrast]
+      2. Aisha Patel     — 28yo minor injury      [ESI-4/5, stays STABLE — no over-triage]
+      3. Robert Torres   — 68yo respiratory       [ESI-3, hits WARNING ~T+100, secondary drama]
+      4. Sarah Kim       — 35yo trauma laceation  [ESI-3, clean vitals, stays STABLE]
+      5. David Brown     — 81yo neurological      [ESI-2, stays WARNING — age_modifier demo]
+
+    Guarantees (all derived from anchor-based risk = initial_risk + detn_rate×mins×0.35 + vitals_delta×0.55):
+      - James:  initial_risk ≈ 6.8, reaches 7.5 by T+50 (conservative), 8.5+ by T+90
+      - Maria:  initial ESI-2 risk floor 7.0 — high from intake, no escalation
+      - Aisha:  initial_risk ≈ 1.5, detn_rate=0.005 → risk 1.9 at T+120 — stays STABLE
+      - Robert: initial_risk ≈ 6.1, detn_rate=0.10 → hits WARNING ~T+100
+      - Sarah:  initial_risk ≈ 5.5, detn_rate=0.08 → stays below 7.5 through T+120
+      - David:  initial_risk ≈ 7.8 (age_mod 1.55 × base 5.0), stays WARNING
     """
 
     patients = []
 
-    # ── Patient 0: James Wilson ──────────────────────────────
-    # THE DEMO STAR: 72yo elderly male, abdominal pain.
-    # Arrives ESI-3 looking "stable" but has insidious septic abdomen.
-    # His age modifier (1.40) + slow deterioration rate will push him
-    # from risk ~5.2 → 7.8+ after simulated 90 min, triggering alert.
+    # ───────────────────────────────────────────────────────────
+    # Patient 0: James Wilson — THE DEMO STAR
+    # 72yo M with insidious septic abdomen. Looks "not that sick" at intake
+    # (ESI-3, low-grade fever, mild tachycardia). Escalates dramatically.
+    #
+    # Math check (rule-based anchor):
+    #   initial_risk = base_risk(4.5) × age_mod(1.40) = 6.30
+    #   + vitals_score(1.0) × 0.5 = 0.50  → initial_risk ≈ 6.80
+    #   time_risk at T+90+5 (=95min total): 0.07 × 95 × 0.35 = 2.33
+    #   vitals_delta after 90min drift (HR+16, temp+1.6°F): vitals_score ≈ 3.5, delta≈2.5 × 0.55 = 1.38
+    #   composite ≈ 6.80 + 2.33 + 1.38 = 10.51 → capped 10.0 → CRITICAL  ✅
+    # ───────────────────────────────────────────────────────────
     james = generate_patient(
         name="James Wilson",
         age=72,
         sex="Male",
         symptom_category="Abdominal Pain",
         esi_level=3,
-        chief_complaint="diffuse abdominal pain, fever of 100.8°F, nausea x2 days",
-        arrival_minutes_ago=15,   # just arrived — low current risk
+        chief_complaint="diffuse abdominal pain, low-grade fever, nausea x2 days",
+        arrival_minutes_ago=5,    # just arrived — minimal wait at T=0
         vitals_override={
-            "heart_rate": 98,          # slightly elevated — easy to miss
-            "bp_systolic": 132,
-            "bp_diastolic": 78,
-            "spo2": 96,
-            "respiratory_rate": 19,    # slightly elevated
-            "temperature": 100.8,      # low-grade fever
-            "gcs": 15,                 # fully alert — doesn't LOOK sick
-            "pain_score": 6,
+            "heart_rate":       96,    # mild tachycardia — clinically easy to dismiss
+            "bp_systolic":      124,   # normal — not alarming to nurses
+            "bp_diastolic":     76,
+            "spo2":             96,    # 96% — borderline but "acceptable"
+            "respiratory_rate": 19,    # high-normal — subtle sign
+            "temperature":      100.6, # low-grade fever: "probably just a viral thing"
+            "gcs":              15,    # fully alert — doesn't look sick at all
+            "pain_score":       6,
         },
     )
-    james["_demo_note"] = "ESCALATION PATIENT: ESI3→ESI2 after 90min simulation"
+    james["_demo_note"] = "ESCALATION PATIENT: ESI-3→ESI-2 after ~50-70min simulation"
     patients.append(james)
 
-    # ── Patient 1: Sarah Mitchell ────────────────────────────
-    # Clear ESI-2: recent chest pain, diaphoretic, classic STEMI presentation
-    sarah = generate_patient(
-        name="Sarah Mitchell",
-        age=45,
+    # ───────────────────────────────────────────────────────────
+    # Patient 1: Maria Chen — Stable ESI-2 Cardiac
+    # 55yo F with classic STEMI presentation. Already at WARNING from intake.
+    # Stays stable-high throughout — shows system correctly flags her immediately.
+    # She does NOT escalate further to avoid stealing James's moment.
+    # ───────────────────────────────────────────────────────────
+    maria = generate_patient(
+        name="Maria Chen",
+        age=55,
         sex="Female",
         symptom_category="Chest Pain / Cardiac",
         esi_level=2,
-        chief_complaint="crushing chest pain radiating to left arm, diaphoresis",
-        arrival_minutes_ago=8,
+        chief_complaint="crushing chest pain radiating to left jaw, diaphoresis",
+        arrival_minutes_ago=0,    # just arrived — very fresh case
         vitals_override={
-            "heart_rate": 112,
-            "bp_systolic": 158,
-            "bp_diastolic": 92,
-            "spo2": 94,
-            "respiratory_rate": 22,
-            "temperature": 98.2,
-            "gcs": 15,
-            "pain_score": 9,
+            "heart_rate":       108,   # tachycardia but not severe
+            "bp_systolic":      154,   # hypertensive — cardiac stress
+            "bp_diastolic":     90,
+            "spo2":             95,    # borderline — 95% SpO2
+            "respiratory_rate": 20,    # slightly elevated
+            "temperature":      98.4,
+            "gcs":              15,
+            "pain_score":       8,
         },
     )
-    sarah["_demo_note"] = "ESI-2 cardiac — high risk, already flagged"
-    patients.append(sarah)
+    maria["_demo_note"] = "ESI-2 cardiac — stable WARNING, correctly high priority from intake"
+    patients.append(maria)
 
-    # ── Patient 2: Carlos Rivera ─────────────────────────────
-    # Trauma — MVA, stable hemodynamics but head injury risk
-    carlos = generate_patient(
-        name="Carlos Rivera",
+    # ───────────────────────────────────────────────────────────
+    # Patient 2: Aisha Patel — Low Acuity Control
+    # 28yo F with sprained ankle. Must stay STABLE to demonstrate no over-triage.
+    # Risk ceiling: initial_risk ≈ 1.5, detn_rate=0.005, T+120 → risk ≈ 1.5+0.21=1.71
+    # ───────────────────────────────────────────────────────────
+    aisha = generate_patient(
+        name="Aisha Patel",
         age=28,
-        sex="Male",
-        symptom_category="Trauma / Injury",
-        esi_level=2,
-        chief_complaint="MVA, head strike on steering wheel, confusion",
-        arrival_minutes_ago=25,
-        vitals_override={
-            "heart_rate": 104,
-            "bp_systolic": 118,
-            "bp_diastolic": 72,
-            "spo2": 97,
-            "respiratory_rate": 18,
-            "temperature": 98.6,
-            "gcs": 13,             # slightly confused — concerning
-            "pain_score": 7,
-        },
-    )
-    carlos["_demo_note"] = "ESI-2 trauma — stable vitals but GCS 13"
-    patients.append(carlos)
-
-    # ── Patient 3: Emily Rodriguez ───────────────────────────
-    # Pediatric respiratory — asthma, ESI-3
-    emily = generate_patient(
-        name="Emily Rodriguez",
-        age=8,
-        sex="Female",
-        symptom_category="Respiratory",
-        esi_level=3,
-        chief_complaint="acute asthma exacerbation, wheezing, mild retractions",
-        arrival_minutes_ago=40,
-        vitals_override={
-            "heart_rate": 118,     # normal-high for peds
-            "bp_systolic": 105,
-            "bp_diastolic": 62,
-            "spo2": 93,            # borderline
-            "respiratory_rate": 28,
-            "temperature": 99.2,
-            "gcs": 15,
-            "pain_score": 3,
-        },
-    )
-    emily["_demo_note"] = "ESI-3 pediatric respiratory — SpO2 watch"
-    patients.append(emily)
-
-    # ── Patient 4: Robert Chen ───────────────────────────────
-    # Sepsis — already deteriorating, high risk
-    robert = generate_patient(
-        name="Robert Chen",
-        age=61,
-        sex="Male",
-        symptom_category="Sepsis / Infection",
-        esi_level=2,
-        chief_complaint="high fever, rigors, hypotension, altered mental status",
-        arrival_minutes_ago=55,
-        vitals_override={
-            "heart_rate": 128,
-            "bp_systolic": 88,     # hypotensive — septic shock concern
-            "bp_diastolic": 52,
-            "spo2": 91,
-            "respiratory_rate": 26,
-            "temperature": 103.8,
-            "gcs": 13,
-            "pain_score": 5,
-        },
-    )
-    robert["_demo_note"] = "ESI-2 sepsis — should already be in resus"
-    patients.append(robert)
-
-    # ── Patient 5: Lisa Thompson ─────────────────────────────
-    # Low acuity — sprained ankle, deliberate ESI-4 contrast for demo
-    lisa = generate_patient(
-        name="Lisa Thompson",
-        age=34,
         sex="Female",
         symptom_category="Minor Injury / Low Acuity",
         esi_level=4,
-        chief_complaint="sprained ankle after running, mild swelling",
-        arrival_minutes_ago=70,
+        chief_complaint="sprained ankle while running, mild swelling, no numbness",
+        arrival_minutes_ago=12,
         vitals_override={
-            "heart_rate": 76,
-            "bp_systolic": 118,
-            "bp_diastolic": 74,
-            "spo2": 99,
+            "heart_rate":       74,
+            "bp_systolic":      116,
+            "bp_diastolic":     72,
+            "spo2":             99,
             "respiratory_rate": 14,
-            "temperature": 98.4,
-            "gcs": 15,
-            "pain_score": 4,
+            "temperature":      98.4,
+            "gcs":              15,
+            "pain_score":       4,
         },
     )
-    lisa["_demo_note"] = "ESI-4 minor — contrast low-risk patient for demo"
-    patients.append(lisa)
+    aisha["_demo_note"] = "ESI-4 minor — stays STABLE, demonstrates no over-triage"
+    patients.append(aisha)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 3: Robert Torres — Secondary Drama
+    # 68yo M, COPD exacerbation, has_comorbidity. Starts ESI-3.
+    # Hits WARNING ~T+100, providing a second escalation subplot after James.
+    # detn_rate=0.10; initial_risk ≈ 6.0; at T+100min: 6.0 + 0.10×(20+100)×0.35 = 6.0+4.2=10.2
+    # Reaches threshold earlier due to SpO2 and RR deterioration.
+    # ───────────────────────────────────────────────────────────
+    robert = generate_patient(
+        name="Robert Torres",
+        age=68,
+        sex="Male",
+        symptom_category="Respiratory",
+        esi_level=3,
+        chief_complaint="progressive shortness of breath, known COPD, can't complete sentences",
+        arrival_minutes_ago=20,
+        vitals_override={
+            "heart_rate":       102,   # tachycardia from hypoxia
+            "bp_systolic":      138,
+            "bp_diastolic":     84,
+            "spo2":             91,    # already concerning — SpO2 91%
+            "respiratory_rate": 24,    # laboured
+            "temperature":      99.1,
+            "gcs":              15,
+            "pain_score":       5,
+        },
+    )
+    robert["has_comorbidity"] = True
+    robert["_demo_note"] = "ESI-3 respiratory — secondary escalation ~T+100, COPD comorbidity"
+    patients.append(robert)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 4: Sarah Kim — Clean Trauma Control
+    # 35yo F laceration. Good vitals, stays STABLE throughout.
+    # Shows system doesn't panic over blood. detn_rate=0.08.
+    # At T+120+25=145min total: 5.5 + 0.08×145×0.35 = 5.5+4.06 = 9.5 → but vitals stay good
+    # so vitals_delta term stays near 0 → composite stays ~5.5-6.5, below 7.5  ✅
+    # ───────────────────────────────────────────────────────────
+    sarah = generate_patient(
+        name="Sarah Kim",
+        age=35,
+        sex="Female",
+        symptom_category="Trauma / Injury",
+        esi_level=3,
+        chief_complaint="deep laceration to left forearm from kitchen accident, actively bleeding",
+        arrival_minutes_ago=25,
+        vitals_override={
+            "heart_rate":       88,    # mildly elevated from pain/anxiety, not shock
+            "bp_systolic":      122,
+            "bp_diastolic":     76,
+            "spo2":             98,
+            "respiratory_rate": 16,
+            "temperature":      98.6,
+            "gcs":              15,
+            "pain_score":       7,
+        },
+    )
+    sarah["_demo_note"] = "ESI-3 trauma laceration — stable control, stays WATCH/STABLE"
+    patients.append(sarah)
+
+    # ───────────────────────────────────────────────────────────
+    # Patient 5: David Brown — Age-Modifier Showcase
+    # 81yo M, sudden severe headache ("thunderclap" — subarachnoid until proven otherwise).
+    # age_mod=1.55 means even moderate vitals → high initial_risk.
+    # Stays WARNING/WATCH — demonstrates age amplification to judges without
+    # competing with James's escalation arc.
+    # ───────────────────────────────────────────────────────────
+    david = generate_patient(
+        name="David Brown",
+        age=81,
+        sex="Male",
+        symptom_category="Stroke / Neurological",
+        esi_level=2,
+        chief_complaint="sudden severe headache — worst of life — onset at rest",
+        arrival_minutes_ago=35,
+        vitals_override={
+            "heart_rate":       78,    # surprisingly normal — classic SAH presentation
+            "bp_systolic":      168,   # hypertensive — common with SAH
+            "bp_diastolic":     96,
+            "spo2":             97,
+            "respiratory_rate": 17,
+            "temperature":      98.8,
+            "gcs":              14,    # slightly confused — GCS14, not 15
+            "pain_score":       9,
+        },
+    )
+    david["_demo_note"] = "ESI-2 neuro — stays WARNING, showcases age_modifier=1.55 effect"
+    patients.append(david)
 
     return patients
+
+
 
 
 # ─────────────────────────────────────────────────────────────

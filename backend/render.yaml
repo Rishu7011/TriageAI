@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: triageai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python -m model.train_model --samples=8000
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    plan: free

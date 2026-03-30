@@ -1,43 +1,57 @@
 import axios from 'axios'
 
-const BASE = ''  // proxied by vite dev server
+/**
+ * Single source of truth for the API base URL.
+ *
+ * Vite automatically loads:
+ *   .env.development  → used by `vite dev`   (VITE_API_BASE_URL=http://localhost:8000)
+ *   .env              → used by `vite build`  (VITE_API_BASE_URL=https://triageai-backend.onrender.com)
+ *
+ * You can also override at any time by setting VITE_API_BASE_URL in a .env.local file.
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://triageai-backend.onrender.com'
+
+export const apiClient = axios.create({
+  baseURL: BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
+})
 
 export const api = {
   // ── Demo / Patients ────────────────────────────────────────
   loadDemo: (simOffsetMinutes = 0) =>
-    axios.post(`/api/patients/load-demo?sim_offset_minutes=${simOffsetMinutes}`),
+    apiClient.post(`/api/patients/load-demo?sim_offset_minutes=${simOffsetMinutes}`),
 
   getQueue: (simOffsetMinutes = 0) =>
-    axios.get(`/api/patients/rescore?sim_offset_minutes=${simOffsetMinutes}`),
+    apiClient.get(`/api/patients/rescore?sim_offset_minutes=${simOffsetMinutes}`),
 
   addPatient: (data) =>
-    axios.post('/admit', data),
+    apiClient.post('/admit', data),
 
   clearPatients: () =>
-    axios.delete('/api/patients'),
+    apiClient.delete('/api/patients'),
 
   // ── Simulation ─────────────────────────────────────────────
   simulate: (totalMinutes = 90) =>
-    axios.get(`/api/patients/simulate?total_minutes=${totalMinutes}`),
+    apiClient.get(`/api/patients/simulate?total_minutes=${totalMinutes}`),
 
   whatif: (futureMinutes = 60, simOffset = 0) =>
-    axios.get(`/api/patients/whatif?future_minutes=${futureMinutes}&sim_offset_minutes=${simOffset}`),
+    apiClient.get(`/api/patients/whatif?future_minutes=${futureMinutes}&sim_offset_minutes=${simOffset}`),
 
   timelapse: (stepMinutes = 10, totalMinutes = 120) =>
-    axios.get(`/api/patients/timelapse?step_minutes=${stepMinutes}&total_minutes=${totalMinutes}`),
+    apiClient.get(`/api/patients/timelapse?step_minutes=${stepMinutes}&total_minutes=${totalMinutes}`),
 
   // ── Alerts ────────────────────────────────────────────────
   getAlerts: () =>
-    axios.get('/api/alerts'),
+    apiClient.get('/api/alerts'),
 
   acknowledgeAlert: (alertId) =>
-    axios.patch(`/api/alerts/${alertId}/acknowledge`),
+    apiClient.patch(`/api/alerts/${alertId}/acknowledge`),
 
   // ── Categories ────────────────────────────────────────────
   getCategories: () =>
-    axios.get('/api/categories'),
+    apiClient.get('/api/categories'),
 
   // ── Health ────────────────────────────────────────────────
   health: () =>
-    axios.get('/api/health'),
+    apiClient.get('/api/health'),
 }

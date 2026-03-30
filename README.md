@@ -252,27 +252,39 @@ When `composite_risk ≥ 7.5`, the Red Zone alert fires.
 ```
 triageai/
 │
-├── api/
-│   └── main.py                  # FastAPI routing — /admit, /queue, /rescore, /alerts
-│
-├── data/
-│   └── generate_data.py         # Synthetic patient generator
-│                                #   - 7 symptom categories with realistic vital distributions
-│                                #   - Age-stratified comorbidity rates
-│                                #   - Labeled deterioration outcomes for supervised training
-│
-├── engine/
-│   ├── scorer.py                # Rule-based ESI v5 initial acuity scoring
-│   │                            #   - Hard floors for critical presentations
-│   │                            #   - Vital sign decision thresholds
-│   │                            #   - Symptom category classification
+├── backend/
+│   ├── api/
+│   │   └── main.py                  # FastAPI routing — /admit, /queue, /rescore, /alerts
 │   │
-│   └── rescorer.py              # ML inference + time-drift + SHAP evaluation
-│                                #   - Loads trained model from model/
-│                                #   - Applies vital sign drift per category
-│                                #   - Generates SHAP explanations per patient
-│                                #   - Computes composite risk score
-│                                #   - Returns sorted, prioritized patient queue
+│   ├── data/
+│   │   └── generate_data.py         # Synthetic patient generator
+│   │                                #   - 7 symptom categories with realistic vital distributions
+│   │                                #   - Age-stratified comorbidity rates
+│   │                                #   - Labeled deterioration outcomes for supervised training
+│   │
+│   ├── engine/
+│   │   ├── scorer.py                # Rule-based ESI v5 initial acuity scoring
+│   │   │                            #   - Hard floors for critical presentations
+│   │   │                            #   - Vital sign decision thresholds
+│   │   │                            #   - Symptom category classification
+│   │   │
+│   │   └── rescorer.py              # ML inference + time-drift + SHAP evaluation
+│   │                                #   - Loads trained model from model/
+│   │                                #   - Applies vital sign drift per category
+│   │                                #   - Generates SHAP explanations per patient
+│   │                                #   - Computes composite risk score
+│   │                                #   - Returns sorted, prioritized patient queue
+│   │
+│   ├── model/
+│   │   ├── train_model.py           # Full training pipeline
+│   │   │                            #   - Generates 8,000 synthetic training samples
+│   │   │                            #   - GradientBoostingClassifier with GridSearchCV
+│   │   │                            #   - Trains SHAP TreeExplainer
+│   │   │                            #   - Saves triage_model.pkl
+│   │   │
+│   │   └── triage_model.pkl         # Serialized model + SHAP explainer (auto-generated)
+│   │
+│   └── requirements.txt             # Python dependencies (pip install -r requirements.txt)
 │
 ├── frontend/
 │   ├── src/
@@ -293,16 +305,6 @@ triageai/
 │   ├── package.json
 │   └── tailwind.config.js
 │
-├── model/
-│   ├── train_model.py           # Full training pipeline
-│   │                            #   - Generates 8,000 synthetic training samples
-│   │                            #   - GradientBoostingClassifier with GridSearchCV
-│   │                            #   - Trains SHAP TreeExplainer
-│   │                            #   - Saves triage_model.pkl
-│   │
-│   └── triage_model.pkl         # Serialized model + SHAP explainer (auto-generated)
-│
-├── requirements.txt             # Python dependencies (pip install -r requirements.txt)
 └── README.md                    # This file
 ```
 
@@ -321,6 +323,9 @@ triageai/
 # Clone the repository
 git clone https://github.com/your-org/TriageAI.git
 cd TriageAI
+
+# Navigate to the backend directory
+cd backend
 
 # Create and activate virtual environment
 python -m venv venv
@@ -343,7 +348,7 @@ Auto-generated API docs available at `http://localhost:8000/docs`
 ### 2. Configure and Start Frontend
 
 ```bash
-# In a new terminal window — navigate to frontend directory
+# In a new terminal window from the project root — navigate to frontend directory
 cd frontend
 
 # Install Node dependencies

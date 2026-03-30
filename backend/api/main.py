@@ -52,12 +52,16 @@ app = FastAPI(title="TriageAI Bridge API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://triage-ai-liart.vercel.app",        # replace with your actual Vercel URL
+        "https://triage-ai-liart.vercel.app",       # add any alternate Vercel URLs
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # ── In-memory store ───────────────────────────────────────────
 _store: list[dict] = []
 
@@ -429,3 +433,4 @@ def timelapse(step_minutes: float = Query(10.0), total_minutes: float = Query(12
 def get_categories():
     """Return available symptom categories for patient intake form."""
     return list(SYMPTOM_CATEGORIES.keys())
+

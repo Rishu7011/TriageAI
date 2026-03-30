@@ -154,7 +154,7 @@ CATEGORY_CLINICAL_NOTES = {
 
 SIM_TOTAL_MINUTES     = 90     # default total simulation window
 SIM_STEP_MINUTES      = 5      # granularity of each simulation step
-REALTIME_REFRESH_MS   = 60_000 # streamlit-autorefresh interval (ms)
+REALTIME_REFRESH_MS   = 60_000 # real-time polling interval (ms) — used by the frontend
 
 # Demo escalation targets — used in generate_data to bake in correct risk
 DEMO_JAMES_INITIAL_RISK  = 4.5   # ESI-3, abdominal pain, 72yo — "stable" intake

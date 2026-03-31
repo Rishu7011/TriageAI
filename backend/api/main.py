@@ -437,4 +437,8 @@ def get_categories():
 # ──Home Page ─────────────────────────────────────────────────
 @app.get("/")
 def home():
-    return {"message": "Backend is running 🚀🚀🚀🚀🚀"}
+    return {
+        "message": "✅ TriageAI Backend is running!",
+        "info": "This is the TriageAI API server. To use TriageAI, visit the frontend:",
+        "frontend_url": "https://triage-ai-liart.vercel.app",
+    }

@@ -434,3 +434,7 @@ def get_categories():
     """Return available symptom categories for patient intake form."""
     return list(SYMPTOM_CATEGORIES.keys())
 
+# ──Home Page ─────────────────────────────────────────────────
+@app.get("/")
+def home():
+    return {"message": "Backend is running 🚀🚀🚀🚀🚀"}

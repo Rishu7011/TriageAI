@@ -55,8 +55,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
-        "https://triage-ai-liart.vercel.app",        # replace with your actual Vercel URL
-        "https://triage-ai-liart.vercel.app",       # add any alternate Vercel URLs
+        "https://triage-ai-liart.vercel.app",
+        "https://triage-oqlgonaqp-negirishabh7011-8052s-projects.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

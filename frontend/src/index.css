@@ -2,59 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --bg:      #0D1117;
-  --card:    #161B22;
-  --border:  #30363D;
-  --danger:  #E63946;
-  --warning: #FF8C00;
-  --watch:   #FFD700;
-  --stable:  #4CAF50;
-  --primary: #E6EDF3;
-  --muted:   #8B949E;
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+  }
 }
 
-* { box-sizing: border-box; }
-
-html, body, #root {
-  margin: 0; padding: 0;
-  background: var(--bg);
-  color: var(--primary);
-  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
-  min-height: 100vh;
+@layer utilities {
+  .glass {
+    @apply bg-gray-900/40 backdrop-blur-md border border-white/10 shadow-xl;
+  }
 }
 
-/* ── Scrollbar ─────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-/* ── Risk pulse animation for CRITICAL cards ─ */
-@keyframes risk-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,0.4); }
-  50%       { box-shadow: 0 0 0 8px rgba(230,57,70,0); }
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
-
-.pulse-critical {
-  animation: risk-pulse 1.8s ease-in-out infinite;
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
 }
-
-/* ── Blinking status dot ─────────────────────  */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
-
-.blink { animation: blink 1.4s ease-in-out infinite; }
-
-/* ── Card glass base ─────────────────────────  */
-.triage-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-/* ── Risk bar transition ─────────────────────  */
-.risk-bar-fill {
-  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }

@@ -247,6 +247,13 @@ def queue_get(sim_offset_minutes: float = Query(0.0)):
     """CRITICAL-2 FIX: Route alias for GET /api/patients/rescore. Frontend polls /queue."""
     return _rescore_queue(sim_offset_minutes)
 
+@app.get("/api/queue")
+def queue_get_api(sim_offset_minutes: float = Query(0.0), no_rescore: bool = Query(False)):
+    """Frontend exact match for GET /api/queue"""
+    if no_rescore:
+        return [_patient_to_api(p) for p in _store]
+    return _rescore_queue(sim_offset_minutes)
+
 
 @app.post("/rescore")
 def rescore_post(sim_offset_minutes: float = Query(0.0)):
@@ -393,6 +400,11 @@ def simulate_jump(total_minutes: float = Query(90.0)):
 def simulate_alias(total_minutes: float = Query(90.0)):
     """CRITICAL-2 FIX: Route alias for GET /api/patients/simulate."""
     return simulate_jump(total_minutes)
+
+@app.post("/api/simulate")
+def simulate_post_api(minutes: float = Query(90.0)):
+    """Frontend exact match for POST /api/simulate?minutes=90"""
+    return simulate_jump(total_minutes=minutes)
 
 
 # ── Time Lapse ────────────────────────────────────────────────

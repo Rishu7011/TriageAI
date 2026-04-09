@@ -1,19 +1,26 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: 'class',
   theme: {
     extend: {
-      colors: {
-        bg:       '#0D1117',
-        card:     '#161B22',
-        border:   '#30363D',
-        danger:   '#E63946',
-        warning:  '#FF8C00',
-        watch:    '#FFD700',
-        stable:   '#4CAF50',
-        primary:  '#E6EDF3',
-        muted:    '#8B949E',
+      animation: {
+        'slide-in-top': 'slideInTop 0.5s cubic-bezier(0.250, 0.460, 0.450, 0.940) both',
+        'fade-out': 'fadeOut 0.5s ease-out both',
       },
+      keyframes: {
+        slideInTop: {
+          '0%': { transform: 'translateY(-50px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0', display: 'none' },
+        }
+      }
     },
   },
   plugins: [],

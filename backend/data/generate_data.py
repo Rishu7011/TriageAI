@@ -437,15 +437,9 @@ def generate_demo_patients() -> list:
       7. Priya Kapoor    — 61yo chest pain        [ESI-2, WARNING, stable high priority]
       8. Arjun Singh     — 33yo minor injury      [ESI-4, STABLE]
       9. Neha Desai      — 75yo respiratory       [ESI-2, WARNING, frail + short of breath]
-
-    CRITICAL-6 math verification at T+90 (new multiplicative formula):
-      base_risk        = 4.5  (Abdominal Pain)
-      time_decay       = 1.0 + (0.020 × 95) = 2.90
-      age_mod          = 1.0 + (72-60) × 0.01 = 1.12
-      comorbidity_mod  = 1.15 (has HTN + T2DM)
-      ml_multiplier    = 1.0 (conservative, 0.5 proba)
-      raw = 4.5 × 2.90 × 1.12 × 1.15 × 1.0 = 16.81 → capped 10.0 ✅
     """
+    random.seed(42)
+    np.random.seed(42)
 
     patients = []
 

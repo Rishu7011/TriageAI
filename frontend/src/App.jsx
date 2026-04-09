@@ -1,61 +1,28 @@
-import React, { useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import { usePatients } from './hooks/usePatients'
-import Header from './components/Header'
-import ProblemCard from './components/ProblemCard'
-import QueueDashboard from './components/QueueDashboard'
+import { useState, useEffect } from 'react';
+import Dashboard from './pages/Dashboard';
+import WhatIf from './pages/WhatIf';
+import TimeLapse from './pages/TimeLapse';
+import { loadDemoData } from './services/api';
 
-export default function App() {
-  const [isTimeLapsing, setIsTimeLapsing] = useState(false)
+function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard');
 
-  const {
-    patients, loading, error, simOffset, setSimOffset,
-    whatIfPatients, loadDemo, addPatient,
-    clearPatients, rescore, simulate, runWhatIf,
-  } = usePatients()
+  // Hard refresh reset: Wipes any custom-admitted patients and resets backend to 10 demo patients
+  useEffect(() => {
+    loadDemoData().catch(console.error);
+  }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0D1117' }}>
-      <Header
-        patientCount={patients.length}
-        simOffset={simOffset}
-      />
-
-      <main style={{ paddingTop: '72px' }}>
-        {error && (
-          <div style={{
-            background: 'rgba(230,57,70,0.15)',
-            border: '1px solid #E63946',
-            borderRadius: 8, padding: '0.75rem 1.25rem',
-            margin: '1rem', color: '#fca5a5', fontSize: '0.85rem',
-          }}>
-            ⚠️ {error}
-          </div>
-        )}
-
-        <AnimatePresence mode="wait">
-          {patients.length === 0 ? (
-            <ProblemCard key="problem" onLoadDemo={loadDemo} loading={loading} />
-          ) : (
-            <QueueDashboard
-              key="queue"
-              patients={patients}
-              loading={loading}
-              simOffset={simOffset}
-              setSimOffset={setSimOffset}
-              whatIfPatients={whatIfPatients}
-              onRescore={rescore}
-              onSimulate={simulate}
-              onRunWhatIf={runWhatIf}
-              onAddPatient={addPatient}
-              onClear={clearPatients}
-              onLoadDemo={loadDemo}
-              isTimeLapsing={isTimeLapsing}
-              setIsTimeLapsing={setIsTimeLapsing}
-            />
-          )}
-        </AnimatePresence>
-      </main>
+    <div className="min-h-screen bg-[#0b0f19] text-gray-200">
+      {(currentPage === 'dashboard' || currentPage === 'patient-queue') ? (
+        <Dashboard setCurrentPage={setCurrentPage} />
+      ) : currentPage === 'whatif' ? (
+        <WhatIf setCurrentPage={setCurrentPage} />
+      ) : (
+        <TimeLapse setCurrentPage={setCurrentPage} />
+      )}
     </div>
-  )
+  );
 }
+
+export default App;
